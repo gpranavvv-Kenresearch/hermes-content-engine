@@ -15,6 +15,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
+    "requirements:check": "tsx scripts/check-requirements.ts",
     "check:config": "tsx src/cli.ts check-config",
     "probe:llm": "tsx src/cli.ts probe-llm",
     "validate": "tsx src/cli.ts validate",

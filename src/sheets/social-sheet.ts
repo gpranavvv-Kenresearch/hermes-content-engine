@@ -17,7 +17,6 @@ import { EngineError } from '../errors.js';
 
 export type SheetPlatform = 'x' | 'facebook' | 'linkedin' | 'tumblr';
 
-const DEFAULT_SHEET_ID = '1p_N3zzJbUx-7t8sjuAtbQsHaUfVmYxytQU_gDd2MGwQ';
 const DEFAULT_TAB = 'Social Media';
 const LEGACY_CREDENTIALS = path.resolve('..', '.accounts', 'google-service-account.json');
 
@@ -155,9 +154,10 @@ export interface SheetsApi {
 /** Real Google Sheets access. `write: false` asks for a read-only token, so reading can never change the sheet. */
 export function createSheetsApi(env: Record<string, string | undefined> = process.env, options: { write?: boolean } = {}): SheetsApi {
   const creds = loadCredentials(env);
+  const id = env.CE_SHEET_ID?.trim();
+  if (!id) throw new EngineError('Google Sheet ID is missing. Set CE_SHEET_ID in the private environment.', 'fatal', 'SHEET_CREDENTIALS');
   const scope = options.write ? 'https://www.googleapis.com/auth/spreadsheets' : 'https://www.googleapis.com/auth/spreadsheets.readonly';
   const auth = new JWT({ email: creds.client_email, key: creds.private_key, scopes: [scope] });
-  const id = env.CE_SHEET_ID?.trim() || DEFAULT_SHEET_ID;
   const tab = env.CE_SHEET_TAB?.trim() || DEFAULT_TAB;
   const rangeUrl = (range: string): string => `https://sheets.googleapis.com/v4/spreadsheets/${id}/values/${encodeURIComponent(`${tab}!${range}`)}`;
   return {

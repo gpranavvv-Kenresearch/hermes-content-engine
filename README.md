@@ -2,13 +2,15 @@
 
 Standalone TypeScript workspace for Ken Research Facebook and LinkedIn text. It reuses the proven evidence extraction, claim checks, style rules, bounded rewrite loop and Google Sheet adapter from the existing posting project, then adds a Hermes writing route, primary-keyword and depth gates, cross-run repair traces, and reviewed writing methods. It does not contain social posting code.
 
+For a fresh machine, begin with [setup and operating requirements](docs/SETUP.md).
+
 ## Current state
 
 The workspace and Node dependencies are prepared. `.env` contains **paths only** to the existing posting-agent `.env` and `.accounts/google-service-account.json`; those secrets were not copied. The new workflow defaults to local output. `next --write-sheet` is an explicit Sheet handoff and writes one Post cell only after validator approval, with exact read-back. The existing publisher may consume a populated Post cell, so use local drafting for the first pilot.
 
-Hermes was not on PowerShell `PATH` when this workspace was built. You will install and sign in to Hermes with your ChatGPT/Codex account; the engine already uses Hermes's documented `chat --oneshot --query-file - --format stream-json --provider openai-codex` interface. [Hermes CLI documentation](https://hermes-agent.nousresearch.com/docs/reference/cli-commands) and [credential documentation](https://hermes-agent.nousresearch.com/docs/user-guide/features/credential-pools).
+Install/sign in to Hermes with your ChatGPT/Codex account and set `HCE_HERMES_BIN` when its executable is not on `PATH`. The engine uses Hermes's documented `chat --oneshot --query-file - --format stream-json --provider openai-codex` interface. [Hermes CLI documentation](https://hermes-agent.nousresearch.com/docs/reference/cli-commands) and [credential documentation](https://hermes-agent.nousresearch.com/docs/user-guide/features/credential-pools).
 
-The full suite passed (872 tests, 59 files) and the TypeScript typecheck passed. The engine read the live Sheet header with the existing service account. A local Ollama pilot could not load `qwen3:4b` with 2.7 GB free RAM; an explicit API-chain pilot reached draft, repair and validation but was rejected for unsupported implications. Both pilots saved reviewable local artifacts and made no Sheet change.
+The full suite and TypeScript typecheck are run before release; use the commands in `docs/SETUP.md` to verify the current checkout. Runtime credentials, Sheet IDs, generated output and browser sessions are not stored in Git.
 
 ## What you need to set up
 

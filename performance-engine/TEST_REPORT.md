@@ -3,7 +3,7 @@
 ## Completed checks
 
 - `npm run typecheck`: passed after the implementation and integration changes.
-- `npm test -- --maxWorkers=4`: **1,113 tests passed across 83 files**, including the existing generator/supervisor regression suite and the Performance Engine tests.
+- `npm test -- --maxWorkers=4`: **1,131 tests passed across 86 files**, including the generator/supervisor regression suite, Performance Engine tests and all-platform automation checks.
 - CLI end-to-end test passed (`performance-engine/tests/cli.test.ts`), exercising import -> learning -> reporting -> rejection of premature policy application. Synthetic data stayed in a temporary local directory; none was sent to the production Sheet.
 - Public collector fixture tests cover the no-key FxTwitter contract, LinkedIn JSON-LD, Facebook visible counters, Tumblr notes, compact counts, optional fresh-browser fallback and account-free tracking. Missing values remain null.
 - Native platform adapter contracts are tested with offline X, Facebook, LinkedIn member/organization and Tumblr responses. These tests verify parsing, missing-value handling and request shape, not real account authorization.
@@ -12,7 +12,7 @@
 
 ## Live Sheet pilot
 
-Source: the existing Social Media tab. Output: the existing [Algo Reports tab](https://docs.google.com/spreadsheets/d/1p_N3zzJbUx-7t8sjuAtbQsHaUfVmYxytQU_gDd2MGwQ/edit#gid=201713406).
+Source: the configured `Social Media` tab. Output: the configured `Algo Reports` tab. The private spreadsheet ID is supplied through `CE_SHEET_ID` and is not stored in Git.
 
 - Recognized **265** published-URL records after supporting Facebook share aliases. **120** cells were excluded as invalid/off-platform URLs/homepages or duplicate published-post IDs; counts/reasons appear in the discovery report.
 - Registered a bounded **12** real published posts, not the entire sheet.

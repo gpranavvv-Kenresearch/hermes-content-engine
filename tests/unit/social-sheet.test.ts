@@ -148,8 +148,12 @@ describe('writeGeneratedPost', () => {
   });
 
   it('a read-only connection cannot write', async () => {
-    const api = createSheetsApi({ GOOGLE_SERVICE_ACCOUNT_JSON: JSON.stringify({ client_email: 'a@b.c', private_key: 'x' }) }, { write: false });
+    const api = createSheetsApi({ GOOGLE_SERVICE_ACCOUNT_JSON: JSON.stringify({ client_email: 'a@b.c', private_key: 'x' }), CE_SHEET_ID: 'sheet-id' }, { write: false });
     await expect(api.writeCell('A1', 'x')).rejects.toMatchObject({ code: 'SHEET_READ_ONLY' });
+  });
+
+  it('requires the target Sheet ID to come from the private environment', () => {
+    expect(() => createSheetsApi({ GOOGLE_SERVICE_ACCOUNT_JSON: JSON.stringify({ client_email: 'a@b.c', private_key: 'x' }) })).toThrow('CE_SHEET_ID');
   });
 });
 

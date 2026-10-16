@@ -70,7 +70,7 @@ function printResult(result: Awaited<ReturnType<typeof runSocialJob>>): void {
 async function doctor(args: Args): Promise<void> {
   const config = loadConfig();
   const env = loadEnvFiles();
-  const hermes = spawnSync(process.env.HCE_HERMES_BIN ?? 'hermes', ['--version'], { windowsHide: true, timeout: 5_000, encoding: 'utf8' });
+  const hermes = spawnSync(process.env.HCE_HERMES_BIN ?? 'hermes', ['--version'], { windowsHide: true, timeout: 15_000, encoding: 'utf8' });
   const localEnv = path.resolve('.env');
   const sourceEnv = process.env.CE_ENV_FILE;
   const credentials = process.env.CE_GOOGLE_SA_FILE;

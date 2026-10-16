@@ -24,7 +24,8 @@ export interface SheetGateway {
 export function googleSheets(env: NodeJS.ProcessEnv = process.env, write = false): SheetGateway {
   const creds = JSON.parse(env.GOOGLE_SERVICE_ACCOUNT_JSON?.trim() || readFileSync(env.CE_GOOGLE_SA_FILE?.trim() || path.resolve('..', '.accounts', 'google-service-account.json'), 'utf8'));
   const auth = new JWT({ email: creds.client_email, key: creds.private_key, scopes: [write ? 'https://www.googleapis.com/auth/spreadsheets' : 'https://www.googleapis.com/auth/spreadsheets.readonly'] });
-  const id = env.CE_SHEET_ID?.trim() || '1p_N3zzJbUx-7t8sjuAtbQsHaUfVmYxytQU_gDd2MGwQ';
+  const id = env.CE_SHEET_ID?.trim();
+  if (!id) throw new Error('Google Sheet ID is missing. Set CE_SHEET_ID in the private environment.');
   const base = `https://sheets.googleapis.com/v4/spreadsheets/${id}`;
   const full = (tab: string, range: string) => `'${tab.replaceAll("'", "''")}'!${range}`;
   const writable = () => { if (!write) throw new Error('Analytics Sheet connection is read-only; use --write-sheet'); };

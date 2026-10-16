@@ -4,7 +4,7 @@ Status: core implementation, universal public-URL collection and tests completed
 
 Output requirement: all tracking, learning, replacement research, experiments and reports use the existing **`Algo Reports`** tab. The original plan entry describes intent, not completed observations. New records distinguish measured metrics, blocked access and insufficient data.
 
-Plan handoff: appended and read back at [`Algo Reports!A62:F62`](https://docs.google.com/spreadsheets/d/1p_N3zzJbUx-7t8sjuAtbQsHaUfVmYxytQU_gDd2MGwQ/edit#gid=201713406&range=A62:F62), record ID `performance-engine:plan:2026-10-16:v1`. Existing headers/history were preserved. Structured column extensions remain an implementation step.
+Plan handoff: appended and read back at `Algo Reports!A62:F62`, record ID `performance-engine:plan:2026-10-16:v1`. The private spreadsheet ID is supplied through `CE_SHEET_ID` and is not stored in Git. Existing headers/history were preserved. Structured column extensions remain an implementation step.
 
 ## 1. Intended flow
 

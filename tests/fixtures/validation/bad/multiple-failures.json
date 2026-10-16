@@ -1,0 +1,10 @@
+{
+  "platform": "x",
+  "text": "Per IMARC Group the Examplestan widget market is changing — fast. #Widgets",
+  "expectedHardCodes": [
+    "COMPETITOR_MENTION",
+    "BANNED_CHARACTER",
+    "MISSING_SOURCE_LINK",
+    "MISSING_BRAND_MENTION"
+  ]
+}

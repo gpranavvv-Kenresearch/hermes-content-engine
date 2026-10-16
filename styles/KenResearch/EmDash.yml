@@ -1,0 +1,8 @@
+# GENERATED. Source: brandConfig.bannedCharacters
+extends: existence
+message: 'Em/en dashes are not allowed. Use a comma, colon or hyphen.'
+level: error
+nonword: true
+tokens:
+  - '—'
+  - '–'

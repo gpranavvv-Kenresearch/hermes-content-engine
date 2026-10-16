@@ -1,0 +1,11 @@
+{
+  "repo": "anthropics/knowledge-work-plugins",
+  "url": "https://github.com/anthropics/knowledge-work-plugins/tree/02ffa99ff00ce4d3046ccebabb8357cb39f3ab06/marketing/skills",
+  "license": "Apache-2.0",
+  "adoptedAt": "2026-10-14T00:00:00.000Z",
+  "techniques": [
+    { "id": "brand-terminology", "text": "Use the approved Ken Research name and an analytical tone. Keep market, geography, period and source terminology consistent throughout the post.", "appliesTo": ["facebook", "linkedin"] },
+    { "id": "claim-review", "text": "Check that every notable market assertion is supported by the supplied evidence and that outside background is never attributed to Ken Research.", "appliesTo": ["facebook", "linkedin"] },
+    { "id": "first-paragraph", "text": "State the market topic and useful finding early; develop one reader-relevant implication before the link or closing question.", "appliesTo": ["facebook", "linkedin"] }
+  ]
+}

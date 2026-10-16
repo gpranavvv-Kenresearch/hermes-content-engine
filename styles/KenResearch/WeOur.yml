@@ -1,0 +1,9 @@
+# GENERATED. Ken Research is written about in the third person.
+extends: existence
+message: 'Avoid first person ''%s''. Write ''Ken Research finds ...'' instead.'
+level: warning
+ignorecase: true
+tokens:
+  - we
+  - our
+  - ours

@@ -1,0 +1,8 @@
+{
+  "platform": "x",
+  "text": "I'm sorry, but I cannot write this post without the report data. https://www.kenresearch.com/industry-reports/examplestan-widget-market?utm_source=x&utm_medium=referral&utm_campaign=automation #Widgets",
+  "expectedHardCodes": [
+    "REFUSAL",
+    "MISSING_BRAND_MENTION"
+  ]
+}

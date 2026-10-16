@@ -1,0 +1,8 @@
+{
+  "platform": "x",
+  "text": "User Safety: safe https://www.kenresearch.com/industry-reports/examplestan-widget-market?utm_source=x&utm_medium=referral&utm_campaign=automation #Widgets",
+  "expectedHardCodes": [
+    "SAFETY_CLASSIFIER_LEAK",
+    "MISSING_BRAND_MENTION"
+  ]
+}

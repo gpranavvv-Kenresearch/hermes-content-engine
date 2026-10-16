@@ -1,0 +1,21 @@
+# GENERATED. Source: brandConfig.bannedPhrases
+extends: existence
+message: 'Banned phrase ''%s''. Rephrase in a plain analyst voice.'
+level: error
+ignorecase: true
+tokens:
+  - 'projected to reach'
+  - 'anticipated to grow'
+  - 'value expected to reach'
+  - 'driving innovation'
+  - 'growing demand for'
+  - 'in today''s rapidly evolving landscape'
+  - 'in the ever-evolving'
+  - 'it is important to note'
+  - 'it''s important to note'
+  - 'delve into'
+  - 'navigate the complexities'
+  - 'a testament to'
+  - 'rich tapestry'
+  - 'unlock the potential'
+  - 'in conclusion,'

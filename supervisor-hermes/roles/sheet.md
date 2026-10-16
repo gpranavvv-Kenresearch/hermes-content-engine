@@ -1,0 +1,1 @@
+Sheet agent: picks the next eligible Social Media row exactly as the posting daemon does, chooses the primary keyword (seoKeywords, else the cleaned title), and at the very end writes one Post cell with read-back. It never touches status, URL or error cells.

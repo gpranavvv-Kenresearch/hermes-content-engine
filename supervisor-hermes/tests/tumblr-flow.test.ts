@@ -1,0 +1,32 @@
+import { describe, expect, it } from 'vitest';
+import { checkClaims } from '../../src/evidence/index.js';
+import { MemoryStore } from '../../src/store/store.js';
+import { FakeLlmProvider, config, reply, sampleFact, utmLink, wrapReply } from '../../tests/fixtures/validation/helpers.js';
+import type { AgentDeps } from '../src/agents/deps.js';
+import type { EvidenceOutput } from '../src/agents/evidence.js';
+import { runStrategyAgent } from '../src/agents/strategy.js';
+import { runValidatorAgent } from '../src/agents/validator.js';
+import { runWriterAgent } from '../src/agents/writer.js';
+import { RunLimits } from '../src/limits.js';
+import { MIN_USEFUL_WORDS } from '../src/orchestrator.js';
+
+it('generates and validates a plain Tumblr brief with no LI layout, bold or forced question', async () => {
+  const item = { id: 'tb', title: 'Examplestan Widget Market', reportUrl: sampleFact.sourceUrl };
+  const note = 'Buyers prioritize service coverage and supplier support when evaluating premium equipment. Supplier selection therefore involves evaluating service networks, maintenance capacity and local implementation support alongside the initial purchase. A regional service network can help suppliers support customers after equipment installation.';
+  const text = `Ken Research finds the Examplestan widget market reached USD 4.2 billion in 2025.\n\n${note}\n\nReport: ${utmLink('tumblr')}\n#Widgets #Examplestan`;
+  const provider = new FakeLlmProvider([reply(wrapReply(text, ['F1']))]);
+  const deps: AgentDeps = { config, store: new MemoryStore(), writer: provider, claimChecker: checkClaims, limits: new RunLimits(), sheets: { tab: 't', read: async () => [], writeCell: async () => {} }, now: () => new Date('2026-10-16T00:00:00Z') };
+  const evidence: EvidenceOutput = { itemId: item.id, facts: [sampleFact], notes: [{ id: 'N1', text: note, sourceUrl: item.reportUrl }], reportPageLoaded: true, mode: 'figures', verifiedFigures: 1, sources: [item.reportUrl] };
+  const strategy = (await runStrategyAgent({ item, evidence, platform: 'tumblr', keyword: 'Examplestan widget market', attempt: 0 }, deps)).output;
+  expect(strategy.styleExamples).toEqual([]);
+  const written = await runWriterAgent({ item, evidence, strategy, platform: 'tumblr' }, deps);
+  const prompt = provider.requests[0]!.prompt;
+  expect(prompt).toContain('TUMBLR POST CONTRACT');
+  expect(prompt).not.toContain('## POST LAYOUT');
+  expect(prompt).not.toContain('## DISCUSSION QUESTION');
+  expect(prompt).toContain('Plain text only');
+  const validation = await runValidatorAgent({ item, evidence, strategy, draft: written.output, platform: 'tumblr', keyword: 'Examplestan widget market', minUsefulWords: MIN_USEFUL_WORDS.tumblr }, deps);
+  expect(validation.output.hardFails).toEqual([]);
+  expect(validation.output.passed).toBe(true);
+  expect(validation.output.text).toBe(text);
+});

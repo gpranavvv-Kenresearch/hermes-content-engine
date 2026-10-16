@@ -1,0 +1,7 @@
+{
+  "platform": "x",
+  "text": "Ken Research finds local assembly is rising in Examplestan. https://www.kenresearch.com/industry-reports/examplestan-widget-market?utm_source=x&utm_source=x&utm_medium=referral&utm_campaign=automation #Widgets",
+  "expectedHardCodes": [
+    "DUPLICATE_UTM"
+  ]
+}

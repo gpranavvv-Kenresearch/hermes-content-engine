@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "accounts": [
+    { "id": "ken-x", "platform": "x", "kind": "user", "handles": ["REPLACE_WITH_HANDLE"], "tokenEnv": "PE_X_BEARER_TOKEN", "nativeId": "REPLACE_WITH_NUMERIC_AUTHOR_ID" },
+    { "id": "ken-linkedin", "platform": "linkedin", "kind": "member", "handles": [], "matchUnknown": false, "tokenEnv": "PE_LINKEDIN_ACCESS_TOKEN", "apiVersion": "202609" },
+    { "id": "ken-facebook", "platform": "facebook", "kind": "page", "handles": ["REPLACE_WITH_PAGE_SLUG"], "nativeId": "REPLACE_WITH_NUMERIC_PAGE_ID", "tokenEnv": "PE_FACEBOOK_ACCESS_TOKEN", "apiVersion": "v24.0", "facebookInsights": {} },
+    { "id": "ken-tumblr", "platform": "tumblr", "kind": "blog", "handles": ["REPLACE_WITH_BLOG_NAME"], "nativeId": "REPLACE_WITH_BLOG_NAME", "tokenEnv": "PE_TUMBLR_API_KEY" }
+  ]
+}

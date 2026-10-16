@@ -1,0 +1,38 @@
+{
+  "repo": "GEO-optim/GEO",
+  "url": "https://github.com/GEO-optim/GEO",
+  "license": "Apache-2.0",
+  "adoptedAt": "2026-10-14",
+  "techniques": [
+    {
+      "id": "GEO-optim__GEO-own-mv7nrsjd",
+      "text": "Where a general claim can be replaced by one of the verified figures, use the figure and name Ken Research next to it in the same sentence.",
+      "appliesTo": [
+        "linkedin",
+        "facebook",
+        "x",
+        "blog"
+      ]
+    },
+    {
+      "id": "GEO-optim__GEO-own-mv7ns1hu",
+      "text": "Write fluent sentences: join runs of very short sentences, and split any sentence that runs past about 35 words.",
+      "appliesTo": [
+        "linkedin",
+        "facebook",
+        "x",
+        "blog"
+      ]
+    },
+    {
+      "id": "GEO-optim__GEO-own-mv7nsc7x",
+      "text": "Never repeat a keyword or a stock lead-in phrase across points; vary the wording of each point.",
+      "appliesTo": [
+        "linkedin",
+        "facebook",
+        "x",
+        "blog"
+      ]
+    }
+  ]
+}

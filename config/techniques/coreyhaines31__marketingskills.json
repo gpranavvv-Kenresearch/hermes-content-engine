@@ -1,0 +1,14 @@
+{
+  "repo": "coreyhaines31/marketingskills",
+  "url": "https://github.com/coreyhaines31/marketingskills/tree/55ff469422c3592dac45bcad08dfb40221981c02/skills/social",
+  "license": "MIT",
+  "adoptedAt": "2026-10-15T00:00:00.000Z",
+  "techniques": [
+    { "id": "audience-insight", "text": "Lead with one concrete, source-backed insight that answers a real question for the platform's reader; make the implication clear without inventing outcomes.", "appliesTo": ["facebook", "linkedin"] },
+    { "id": "native-platform", "text": "Adapt the same evidence separately for Facebook and LinkedIn. Change the hook, explanation and question for each audience instead of copying text across platforms.", "appliesTo": ["facebook", "linkedin"] },
+    { "id": "prove-it", "text": "Review each assertion for proof. Replace vague superlatives with a verified fact or a narrower, accurate statement.", "appliesTo": ["facebook", "linkedin"] },
+    { "id": "x-topic-discovery", "text": "Name the market topic early using the primary keyword naturally in visible prose. Make the finding understandable without opening the link; never stuff keywords or use hashtags as a substitute for meaning.", "appliesTo": ["x"] },
+    { "id": "x-buyer-relevance", "text": "Connect one source-backed finding to one concrete business consideration, such as entry, supplier capability or adoption economics. Choose only a consideration the evidence supports; never promise returns or invent a buyer problem.", "appliesTo": ["x"] },
+    { "id": "x-specific-proof", "text": "Use a specific attributed finding instead of hype or a manufactured hot take. Keep the scope and period of a figure. Remove filler, fake personal stories, invented prevailing beliefs and engagement bait.", "appliesTo": ["x"] }
+  ]
+}

@@ -1,0 +1,87 @@
+[
+  {
+    "url": "https://github.com/gitroomhq/postiz-app",
+    "title": "Postiz analytics implementation",
+    "author": "gitroomhq",
+    "accessedAt": "2026-10-16T06:45:29.599Z",
+    "revision": "08b1e6b46f49bb92442123a2522d7f666a65d4f7",
+    "license": "AGPL-3.0",
+    "platform": "all",
+    "confidence": "hypothesis",
+    "purpose": "analytics_reference",
+    "technique": "Keep platform-native metric semantics and exact published post IDs. Separate reach from impressions rather than copying dashboard labels."
+  },
+  {
+    "url": "https://github.com/gitroomhq/postiz-agent",
+    "title": "Postiz per-post analytics CLI",
+    "author": "gitroomhq",
+    "accessedAt": "2026-10-16T06:45:32.012Z",
+    "revision": "86e02524377cc60a6cd6ef67fd10a3caeade8d2c",
+    "license": "AGPL-3.0",
+    "platform": "all",
+    "confidence": "hypothesis",
+    "purpose": "analytics_reference",
+    "technique": "Treat an unresolved published-post ID as a mapping failure, not a zero-engagement result. Postiz requires its own connected accounts and internal post IDs."
+  },
+  {
+    "url": "https://github.com/d60/twikit",
+    "title": "Twikit X data model",
+    "author": "d60",
+    "accessedAt": "2026-10-16T06:45:34.617Z",
+    "revision": "c3b7220866f8582009fe2d1155b6fe92192a2711",
+    "license": "MIT",
+    "platform": "x",
+    "confidence": "hypothesis",
+    "purpose": "analytics_reference",
+    "technique": "Views and engagement counters are separate fields. This unofficial session-dependent collector is a research reference, not an installed cross-platform adapter."
+  },
+  {
+    "url": "https://github.com/vladkens/twscrape",
+    "title": "twscrape X post model and session requirements",
+    "author": "vladkens",
+    "accessedAt": "2026-10-16T06:45:37.434Z",
+    "revision": "568844df82af956df5970bcf7ff84dd5ba729eb0",
+    "license": "MIT",
+    "platform": "x",
+    "confidence": "hypothesis",
+    "purpose": "analytics_reference",
+    "technique": "Keep missing view counts nullable and record collection failures. The repository requires authorized X sessions and is not enabled by default."
+  },
+  {
+    "url": "https://github.com/tumblr/tumblr.js",
+    "title": "Official Tumblr JavaScript API client",
+    "author": "tumblr",
+    "accessedAt": "2026-10-16T06:45:41.086Z",
+    "revision": "c86b722a8e8bb0729f9160fb03b36f7d1685c1ba",
+    "license": "Apache-2.0",
+    "platform": "tumblr",
+    "confidence": "hypothesis",
+    "purpose": "analytics_reference",
+    "technique": "Use a blog and stable post ID for lookup. Aggregate note counts must not be represented as a fabricated likes/shares breakdown."
+  },
+  {
+    "url": "https://github.com/tweepy/tweepy",
+    "title": "Tweepy official-API client patterns",
+    "author": "tweepy",
+    "accessedAt": "2026-10-16T06:45:43.142Z",
+    "revision": "c1978d643ecce491929084e4290b35f57e4921ad",
+    "license": "MIT",
+    "platform": "x",
+    "confidence": "hypothesis",
+    "purpose": "analytics_reference",
+    "technique": "Separate public post metrics from owner-context analytics and propagate rate-limit/access failures instead of interpreting them as poor content."
+  },
+  {
+    "url": "https://github.com/coreyhaines31/marketingskills",
+    "title": "B2B social-content and copywriting guidance",
+    "author": "coreyhaines31",
+    "accessedAt": "2026-10-15T00:00:00.000Z",
+    "revision": "55ff469422c3592dac45bcad08dfb40221981c02",
+    "license": "MIT",
+    "platform": "all",
+    "confidence": "hypothesis",
+    "purpose": "content_idea",
+    "newFormat": false,
+    "technique": "Test a concise buyer-decision implication supported by one specific finding, within an existing approved format; compare its mature interaction rate with the current approach."
+  }
+]

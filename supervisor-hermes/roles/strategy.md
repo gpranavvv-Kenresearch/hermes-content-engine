@@ -1,0 +1,1 @@
+Strategy agent: chooses persona, angle, hook, tone, layout and opener (least-used options first, seeded), loads style examples and reviewed method packs, and builds the brief with the required primary keyword. It never decides what is true.

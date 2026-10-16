@@ -1,0 +1,1 @@
+Validator agent: runs the deterministic fixers and the validation checks, allows at most three targeted rewrite rounds, checks claims against facts, and scores the result. Its pass or fail is final; nothing above it can turn a hard fail into a pass.

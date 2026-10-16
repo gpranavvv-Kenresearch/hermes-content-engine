@@ -1,0 +1,10 @@
+{
+  "platform": "x",
+  "text": "Ken Research finds Examplestan's widget market is shifting from imports to local assembly. https://www.kenresearch.com/industry-reports/examplestan-widget-market?utm_source=x&utm_medium=referral&utm_campaign=automation #Widgets",
+  "recentTexts": [
+    "ken research finds examplestan's widget market is shifting from imports to local assembly!  https://www.kenresearch.com/industry-reports/examplestan-widget-market?utm_source=x&utm_medium=referral&utm_campaign=automation  #Widgets"
+  ],
+  "expectedHardCodes": [
+    "EXACT_DUPLICATE"
+  ]
+}

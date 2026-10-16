@@ -1,0 +1,146 @@
+{
+  "repos": [
+    {
+      "id": "AgriciDaniel/claude-blog",
+      "url": "https://github.com/AgriciDaniel/claude-blog",
+      "license": "MIT",
+      "status": "ideas-adopted",
+      "usefulFor": [
+        "blog",
+        "geo",
+        "seo"
+      ],
+      "adopted": [
+        "Heading rules and prose-lint ideas in the structure and readability dimensions of the readiness score (src/evaluation/)"
+      ],
+      "notes": "Read on 2026-10-13, no code copied. Its per-engine citation point bands and the 70-point quality gate were skipped: author-chosen, uncalibrated.",
+      "reviewedAt": "2026-10-13"
+    },
+    {
+      "id": "Auriti-Labs/geo-optimizer-skill",
+      "url": "https://github.com/Auriti-Labs/geo-optimizer-skill",
+      "license": "MIT",
+      "status": "ideas-adopted",
+      "usefulFor": [
+        "geo",
+        "blog",
+        "seo"
+      ],
+      "adopted": [
+        "Meta and structure presence checks (title, description, canonical, one H1, JSON-LD, robots) in the technical score (src/evaluation/scoring.ts)",
+        "Citability and structure ideas in the readiness score, re-implemented in TypeScript (docs/metrics.md)"
+      ],
+      "notes": "Read on 2026-10-13, no code copied. Its 100-150 word section bonus and Flesch-Kincaid 6-8 target were NOT ported: they conflict with the senior B2B readability band.",
+      "reviewedAt": "2026-10-13"
+    },
+    {
+      "id": "every-app/open-seo",
+      "url": "https://github.com/every-app/open-seo",
+      "license": "MIT",
+      "status": "reviewed",
+      "usefulFor": [
+        "seo",
+        "keywords"
+      ],
+      "adopted": [],
+      "notes": "Read on 2026-10-13. Idea noted: cluster keywords by SERP intent, not word similarity. Nothing taken: it runs on DataForSEO (paid) and gives no thresholds to reuse.",
+      "reviewedAt": "2026-10-13"
+    },
+    {
+      "id": "GEO-optim/GEO",
+      "url": "https://github.com/GEO-optim/GEO",
+      "license": "Apache-2.0",
+      "status": "ideas-adopted",
+      "usefulFor": [
+        "geo"
+      ],
+      "adopted": [
+        "Finding: statistics and named sources raise AI-answer visibility, so a post with verified facts must state at least one verified figure (NO_VERIFIED_FIGURE) and name Ken Research next to a finding (NO_ATTRIBUTION)",
+        "Finding: fluent prose helps, so long and choppy sentences are flagged (LONG_SENTENCE, CHOPPY_SENTENCES)",
+        "Finding: keyword stuffing hurts (-8.7%), so it is never used and repeated lead-in phrases fail (REPEATED_PHRASE)",
+        "Where a general claim can be replaced by one of the verified figures, use the figure and name Ken Research next to it in the same sentence.",
+        "Write fluent sentences: join runs of very short sentences, and split any sentence that runs past about 35 words.",
+        "Never repeat a keyword or a stock lead-in phrase across points; vary the wording of each point."
+      ],
+      "notes": "Paper arXiv 2311.09735 (KDD 2024). Its own prompts ask the model for fake quotes, invented sources and hypothetical statistics: NOT adopted, they break our source policy. Quotation addition is not used because we hold no verified quotes.",
+      "reviewedAt": "2026-10-14"
+    },
+    {
+      "id": "gregorym/agent-writer",
+      "url": "https://github.com/gregorym/bloggy-ai-bot",
+      "license": "AGPL-3.0",
+      "status": "rejected",
+      "usefulFor": [
+        "blog"
+      ],
+      "adopted": [],
+      "notes": "Rejected on 2026-10-13 from its description only (not read in depth): full blog writer and publisher on Gemini; overlaps the existing ChatGPT blog pipeline and AGPL v3 is risky to build on.",
+      "reviewedAt": "2026-10-13"
+    },
+    {
+      "id": "IamRamgarhia/BlogPilot-Open-Source-AI-SEO-Content-Studio",
+      "url": "https://github.com/IamRamgarhia/BlogPilot-Open-Source-AI-SEO-Content-Studio",
+      "license": "MIT",
+      "status": "pending",
+      "usefulFor": [
+        "seo",
+        "blog",
+        "keywords"
+      ],
+      "adopted": [],
+      "notes": "Best fit of the four for BLOG generation ideas (MIT, TypeScript, 45 markdown SEO/GEO playbooks, deterministic scoring, brand-voice trainer). Small and young: 27 stars, 17 commits. Use as a source of techniques via repo:adopt, do not run it as a dependency. Its paid-service flag is a false alarm (it names paid tools it replaces). 2026-10-14, awaiting decision.",
+      "reviewedAt": "2026-10-14"
+    },
+    {
+      "id": "langgenius/dify",
+      "url": "https://github.com/langgenius/dify",
+      "license": null,
+      "status": "pending",
+      "usefulFor": [
+        "post",
+        "blog"
+      ],
+      "adopted": [],
+      "notes": "LLM app and workflow platform (docker stack with several services). License is custom (GitHub reports none): read LICENSE by hand. Using it would mean replacing our code pipeline with a platform; its README holds its own dev rules, not writing techniques. Recommendation: not suitable. 2026-10-14, awaiting decision.",
+      "reviewedAt": "2026-10-14"
+    },
+    {
+      "id": "Mintplex-Labs/anything-llm",
+      "url": "https://github.com/Mintplex-Labs/anything-llm",
+      "license": "MIT",
+      "status": "pending",
+      "usefulFor": [
+        "geo",
+        "keywords"
+      ],
+      "adopted": [],
+      "notes": "Local-first chat/RAG app for talking to documents (MIT). Not a writing-technique source and it would duplicate our evidence layer. Its README says it sends usage telemetry unless disabled: a privacy concern for Ken Research data. Recommendation: not suitable. 2026-10-14, awaiting decision.",
+      "reviewedAt": "2026-10-14"
+    },
+    {
+      "id": "open-webui/open-webui",
+      "url": "https://github.com/open-webui/open-webui",
+      "license": null,
+      "status": "pending",
+      "usefulFor": [
+        "blog",
+        "geo"
+      ],
+      "adopted": [],
+      "notes": "Chat UI for Ollama and OpenAI-style APIs. License is custom (GitHub reports none): read LICENSE by hand before any use. A UI, not a source of writing techniques for post/blog generation. Recommendation: not suitable. 2026-10-14, awaiting decision.",
+      "reviewedAt": "2026-10-14"
+    },
+    {
+      "id": "PyUtility/autoblogs",
+      "url": "https://pypi.org/project/autoblogs/",
+      "license": null,
+      "status": "rejected",
+      "usefulFor": [
+        "blog"
+      ],
+      "adopted": [],
+      "notes": "Rejected on 2026-10-13 from its PyPI listing only: Python package for blog generation, overlaps the existing pipeline; license not checked.",
+      "reviewedAt": "2026-10-13"
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+Evidence agent: loads the Ken Research report page and extracts verified facts and source notes. Searches Ken Research and government pages for substitute evidence only when the report page loaded but has no figure from 2024 or later. If the report page did not load it gathers nothing.

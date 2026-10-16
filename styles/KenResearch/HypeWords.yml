@@ -1,0 +1,14 @@
+# GENERATED. Source: brandConfig.bannedPromoWords
+extends: existence
+message: 'Hype word ''%s''. State the evidence instead.'
+level: warning
+ignorecase: true
+tokens:
+  - 'booming'
+  - 'massive'
+  - 'revolutionary'
+  - 'game-changing'
+  - 'game-changer'
+  - 'unstoppable'
+  - 'skyrocketing'
+  - 'mind-blowing'

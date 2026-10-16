@@ -1,0 +1,7 @@
+{
+  "platform": "x",
+  "text": "Ken Research finds Examplestan widget buyers weigh service coverage above price. #Widgets",
+  "expectedHardCodes": [
+    "MISSING_SOURCE_LINK"
+  ]
+}

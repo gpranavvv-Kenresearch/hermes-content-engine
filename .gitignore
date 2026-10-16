@@ -1,0 +1,25 @@
+node_modules/
+.env
+.env.*
+!.env.example
+
+# the lab: third-party repos run as they are, and what they produced
+github-seo/repos/
+github-seo/results/
+
+# runtime state: browser profiles, cookies, generated output, logs
+.sessions/
+output/
+logs/
+*.log
+
+# local data exports used as fixtures (real report data; keep out of git)
+tests/fixtures/sheet-export*.csv
+tests/fixtures/local/
+
+# editor / OS
+.vscode/
+performance-engine/config/accounts.json
+.DS_Store
+Thumbs.db
+Untitled

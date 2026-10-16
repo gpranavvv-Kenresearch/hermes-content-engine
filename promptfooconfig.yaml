@@ -1,0 +1,60 @@
+# Prompt regression skeleton for promptfoo (https://www.promptfoo.dev).
+# promptfoo is NOT installed in this project and nothing here runs in CI yet.
+# Intended use, once a free/local provider is chosen:
+#   npx promptfoo@latest eval -c promptfooconfig.yaml
+#
+# The idea: pin a handful of synthetic inputs, run the rewrite prompt through a
+# provider, and assert the deterministic properties we can check cheaply.
+# Quality judgements stay with the validation layer and with humans.
+
+description: Ken Research rewrite-prompt regression (skeleton)
+
+prompts:
+  # Replace with the real prompt rendered by src/rewrite/rewrite-prompt.ts
+  # (dump it to a file per test case, or call buildRewritePrompt from a JS provider).
+  - file://tests/fixtures/validation/promptfoo/rewrite-prompt.txt
+
+providers:
+  # TODO: choose a free provider. Example shapes (uncomment one):
+  # - id: openai:chat:gpt-4o-mini
+  # - id: ollama:chat:llama3.1
+  - id: echo
+
+defaultTest:
+  assert:
+    # No em or en dash may ever appear.
+    - type: javascript
+      value: "!/[\\u2013\\u2014]/.test(output)"
+    # Output must follow the parseable format from src/contracts.ts.
+    - type: contains
+      value: "<<<CE_OUTPUT>>>"
+    - type: contains
+      value: "<<<CE_END>>>"
+    # The reply must not echo the instruction block.
+    - type: not-icontains
+      value: "PROBLEMS TO FIX"
+
+tests:
+  - description: over-length X post is shortened and keeps the link exactly once
+    vars:
+      platform: x
+      issue: OVER_HARD_LIMIT
+    assert:
+      - type: javascript
+        value: "(output.match(/kenresearch\\.com/g) || []).length === 1"
+
+  - description: missing title on a blog is added as an H1
+    vars:
+      platform: blog
+      issue: MISSING_TITLE
+    assert:
+      - type: regex
+        value: "---TEXT---\\s*#\\s+\\S"
+
+  - description: placeholder text is removed, not replaced by invented numbers
+    vars:
+      platform: x
+      issue: PLACEHOLDER
+    assert:
+      - type: not-regex
+        value: "\\[[^\\]]*(NEEDED|Insert)[^\\]]*\\]|\\{\\{|TODO|TBD"

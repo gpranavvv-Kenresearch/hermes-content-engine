@@ -40,7 +40,9 @@ try {
 
   if (!$unfinished) {
     Write-Output 'Preflight: checking Hermes and enough pending rows for X 60, Facebook 75, LinkedIn 45 and Tumblr 60.'
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$PSScriptRoot\run-overnight.ps1" -X 60 -Facebook 75 -LinkedIn 45 -Tumblr 60 -Hours $Hours -WriteSheet -Check '-KeepAwake:$false'
+    # Check mode never enables the sleep hold, so do not forward the KeepAwake switch
+    # through a child PowerShell process because Windows PowerShell treats it as a string.
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$PSScriptRoot\run-overnight.ps1" -X 60 -Facebook 75 -LinkedIn 45 -Tumblr 60 -Hours $Hours -WriteSheet -Check
     if ($LASTEXITCODE -ne 0) { throw "Generation preflight failed with exit code $LASTEXITCODE." }
   }
 
@@ -48,7 +50,7 @@ try {
     Write-Output 'Running all-platform performance analysis and replacing future-post guidance.'
     & npm.cmd run performance:auto-all
     if ($LASTEXITCODE -ne 0) {
-      Write-Warning 'One or more feedback loops failed. Generation will continue with each failed platform’s previous valid guidance.'
+      Write-Warning "One or more feedback loops failed. Generation will continue with each failed platform's previous valid guidance."
     }
   }
 

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { shortHash } from '../../src/utils/hash.js';
 import { commitApprovedJob, parseNightArgs } from '../src/overnight-cli.js';
-import { acquireNightLock, assertReady, atomicSave, completedCounts, newNightPlan, recoveryKind, runNight, type NightDeps, type NightJob, type NightPlan, type Targets } from '../src/overnight.js';
+import { acquireNightLock, assertReady, atomicSave, completedCounts, newNightPlan, recoveryKind, runNight, workerHealth, type NightDeps, type NightJob, type NightPlan, type Targets } from '../src/overnight.js';
 import { GATES, type RowResult, type SocialPlatform } from '../src/types.js';
 
 const dirs: string[] = [];
@@ -35,6 +35,16 @@ const readyJob = (): NightJob => {
 };
 
 describe('overnight recovery', () => {
+  it('distinguishes a slow Hermes call from a stale worker and caps one generation attempt', () => {
+    const now = 3_000_000;
+    const plan = newNightPlan('health', targets(), false, now - 20 * 60_000);
+    plan.updatedAt = now - 20 * 60_000;
+    plan.jobs = [{ ...readyJob(), phase: 'generating', startedAt: now - 20 * 60_000 }];
+    expect(workerHealth(plan, { pid: 42, updatedAt: now - 30_000 }, 42, now)).toBe('healthy');
+    expect(workerHealth(plan, { pid: 41, updatedAt: now - 30_000 }, 42, now)).toBe('heartbeat_stale');
+    plan.jobs[0]!.startedAt = now - 36 * 60_000;
+    expect(workerHealth(plan, { pid: 42, updatedAt: now - 30_000 }, 42, now)).toBe('generation_stalled');
+  });
   it('persists approved text before committing and reaches each target round-robin', async () => {
     const s = setup(targets({ facebook: 2, tumblr: 1 }));
     s.deps.commit = async job => {

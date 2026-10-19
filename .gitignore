@@ -9,9 +9,16 @@ github-seo/results/
 
 # runtime state: browser profiles, cookies, generated output, logs
 .sessions/
+.accounts/
 output/
 logs/
 *.log
+
+# Imported browser-generation runtime artifacts
+browser-generation/**/images/*.png
+browser-generation/**/images/*.pdf
+browser-generation/six-slide/runs/
+browser-generation/six-slide/images/
 
 # local data exports used as fixtures (real report data; keep out of git)
 tests/fixtures/sheet-export*.csv

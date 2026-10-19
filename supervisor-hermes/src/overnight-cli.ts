@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { appendFile, mkdir, readFile } from 'node:fs/promises';
+import { appendFile, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadEnvFiles } from '../../src/llm/env.js';
@@ -9,7 +9,7 @@ import { createSheetsApi, pickNextRow, readPostSnapshot, writeGeneratedPost, typ
 import { JsonFileStore } from '../../src/store/store.js';
 import { pickRowAgent } from './agents/sheet.js';
 import { generateOvernightPost } from './overnight-runtime.js';
-import { acquireNightLock, assertReady, atomicSave, completedCounts, NIGHT_PLATFORMS, newNightPlan, recoveryKind, runNight, type NightJob, type NightPlan, type Targets } from './overnight.js';
+import { acquireNightLock, assertReady, atomicSave, completedCounts, NIGHT_PLATFORMS, newNightPlan, recoveryKind, runNight, workerHealth, type NightJob, type NightPlan, type Targets, type WorkerHeartbeat } from './overnight.js';
 
 export interface NightArgs {
   targets: Targets; writeSheet: boolean; hours: number; id?: string; resume?: string;
@@ -55,7 +55,15 @@ export async function commitApprovedJob(api: SheetsApi, job: NightJob): Promise<
 
 const root = () => path.resolve('output/supervisor-hermes/overnight');
 const batchFile = (id: string) => path.join(root(), `${id}.json`);
+const heartbeatFile = (id: string) => path.join(root(), `${id}.heartbeat.json`);
 const pause = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+
+async function readHeartbeat(id: string): Promise<WorkerHeartbeat | null> {
+  try {
+    const beat = JSON.parse(await readFile(heartbeatFile(id), 'utf8')) as WorkerHeartbeat;
+    return Number.isInteger(beat.pid) && Number.isFinite(beat.updatedAt) ? beat : null;
+  } catch { return null; }
+}
 
 async function loadPlan(id: string): Promise<NightPlan> {
   const plan = JSON.parse(await readFile(batchFile(id), 'utf8')) as NightPlan;
@@ -117,6 +125,21 @@ async function worker(args: NightArgs, id: string): Promise<number> {
       console.log(line);
       logQueue = logQueue.then(() => appendFile(logFile, `${line}\n`, 'utf8'));
     };
+    // A separate, tiny heartbeat keeps a long Hermes call from looking like a dead checkpoint.
+    // The checkpoint still records only durable job transitions and is never rewritten by this timer.
+    let beatQueue: Promise<void> = Promise.resolve();
+    const beat = (): Promise<void> => {
+      const write = beatQueue.then(async () => {
+        const file = heartbeatFile(id);
+        const temp = `${file}.${process.pid}.tmp`;
+        await writeFile(temp, JSON.stringify({ pid: process.pid, updatedAt: Date.now() } satisfies WorkerHeartbeat), 'utf8');
+        await rename(temp, file);
+      });
+      beatQueue = write.catch(() => {});
+      return write;
+    };
+    await beat();
+    const pulse = setInterval(() => { void beat().catch(error => { clearInterval(pulse); console.error(`Worker heartbeat failed: ${(error as Error).message}`); }); }, 30_000);
     try {
       await runNight(plan, {
         now: Date.now, sleep: pause, save: p => atomicSave(batchFile(id), p), log,
@@ -131,7 +154,7 @@ async function worker(args: NightArgs, id: string): Promise<number> {
         generate: (platform, pick, signal) => generateOvernightPost(platform, pick, api, signal),
         commit: job => commitApprovedJob(api, job),
       });
-    } finally { await logQueue; }
+    } finally { clearInterval(pulse); await beatQueue; await logQueue; }
     console.log(JSON.stringify({ batch: id, status: plan.status, completed: completedCounts(plan), targets: plan.targets, reason: plan.reason, checkpoint: batchFile(id) }, null, 2));
     return plan.status === 'complete' ? 0 : plan.status === 'blocked' ? 3 : 2;
   } finally { await release(); }
@@ -144,21 +167,39 @@ async function watchdog(args: NightArgs, original: string[], id: string): Promis
   for (let attempt = 0; attempt < 6; attempt++) {
     const childArgs = attempt === 0 ? original : ['--resume', id];
     if (!args.resume && attempt === 0 && !args.id) childArgs.push('--id', id);
+    let exitDetail = 'unknown';
     const code = await new Promise<number>(resolve => {
       const child = spawn(process.execPath, [...process.execArgv, script, ...childArgs, '--worker'], { windowsHide: true, stdio: 'inherit' });
       let cancelled = false;
       let settled = false;
-      const stop = () => { cancelled = true; child.kill(); };
+      let suspected: 'heartbeat_stale' | 'generation_stalled' | null = null;
+      let checking = false;
+      let stopping = false;
+      const killTree = () => {
+        if (process.platform === 'win32' && child.pid) {
+          const killer = spawn('taskkill', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' });
+          killer.once('error', () => child.kill());
+        } else child.kill();
+      };
+      const stop = () => { cancelled = true; if (!stopping) { stopping = true; killTree(); } };
       process.once('SIGINT', stop); process.once('SIGTERM', stop);
-      // A row has a 25-minute soft cancellation; the parent also kills a stuck worker.
+      // A row has a 25-minute soft cancellation. A separate worker pulse distinguishes
+      // slow model calls from a stuck process; a 35-minute row cap is a final backstop.
       const health = setInterval(() => {
-        void readFile(batchFile(id), 'utf8').then(raw => {
-          const updated = (JSON.parse(raw) as NightPlan).updatedAt;
-          if (Number.isFinite(updated) && Date.now() - updated > 30 * 60_000) { console.log('Worker heartbeat stale; restarting from checkpoint.'); child.kill(); }
-        }).catch(() => { /* checkpoint may be being created */ });
+        if (checking || stopping) return;
+        checking = true;
+        void Promise.all([readFile(batchFile(id), 'utf8'), readHeartbeat(id)]).then(([raw, beat]) => {
+          const condition = workerHealth(JSON.parse(raw) as NightPlan, beat, child.pid ?? -1, Date.now());
+          if (condition === 'healthy') { suspected = null; return; }
+          if (suspected !== condition) { suspected = condition; console.log(`Worker ${condition}; rechecking in 30s before restart.`); return; }
+          stopping = true;
+          console.log(`Worker ${condition}; restarting from checkpoint.`);
+          killTree();
+        }).catch(() => { /* checkpoint may be being created */ }).finally(() => { checking = false; });
       }, 30_000);
       const finish = (n: number) => { if (settled) return; settled = true; clearInterval(health); process.removeListener('SIGINT', stop); process.removeListener('SIGTERM', stop); resolve(cancelled ? 130 : n); };
-      child.once('error', () => finish(1)); child.once('exit', n => finish(n ?? 1));
+      child.once('error', error => { exitDetail = `spawn error: ${error.message}`; finish(1); });
+      child.once('exit', (n, signal) => { exitDetail = signal ? `signal ${signal}` : `exit ${n ?? 1}`; finish(n ?? 1); });
     });
     if ([0, 2, 3, 130].includes(code)) return code;
     if (attempt === 5) {
@@ -169,7 +210,7 @@ async function watchdog(args: NightArgs, original: string[], id: string): Promis
     }
     if (!existsSync(batchFile(id))) return 1; // configuration failure before a checkpoint is not a restartable job
     const delay = Math.min(120, 15 * 2 ** attempt);
-    console.log(`Worker exited unexpectedly. Checkpoint retained; restart ${attempt + 1}/5 in ${delay}s. Batch ${id}.`);
+    console.log(`Worker exited unexpectedly (${exitDetail}). Checkpoint retained; restart ${attempt + 1}/5 in ${delay}s. Batch ${id}.`);
     await pause(delay * 1000);
   }
   return 1;
@@ -181,7 +222,13 @@ export async function mainNight(argv: string[]): Promise<number> {
   if (args.status) {
     if (!args.resume) throw new Error('Pass --status --resume <batch-id>.');
     const p = await loadPlan(args.resume);
-    console.log(JSON.stringify({ batch: p.id, status: p.status, targets: p.targets, completed: completedCounts(p), ready: p.jobs.filter(j => j.phase === 'ready').length, skipped: p.jobs.filter(j => j.phase === 'skipped').length, reason: p.reason, deadline: new Date(p.deadline).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) }, null, 2));
+    const lock = await readFile(path.join(root(), 'writer.lock'), 'utf8').then(raw => JSON.parse(raw) as { pid: number }).catch(() => null);
+    let workerAlive = false;
+    if (lock?.pid) { try { process.kill(lock.pid, 0); workerAlive = true; } catch { /* stale lock */ } }
+    const health = p.status === 'running' ? workerHealth(p, await readHeartbeat(args.resume), lock?.pid ?? -1, Date.now()) : 'not_applicable';
+    const deadlineExpired = Date.now() >= p.deadline;
+    const observedStatus = p.status === 'running' && !workerAlive ? 'interrupted' : p.status;
+    console.log(JSON.stringify({ batch: p.id, status: p.status, observedStatus, targets: p.targets, completed: completedCounts(p), ready: p.jobs.filter(j => j.phase === 'ready').length, skipped: p.jobs.filter(j => j.phase === 'skipped').length, reason: p.reason, deadline: new Date(p.deadline).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }), deadlineExpired, workerAlive, health }, null, 2));
     return 0;
   }
   if (args.check) { await preflight(args); return 0; }

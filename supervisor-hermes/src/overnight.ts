@@ -12,6 +12,8 @@ export interface NightJob {
   phase: 'queued' | 'generating' | 'ready' | 'done' | 'skipped';
   attempts: number;
   commitAttempts: number;
+  /** Start of the current generation attempt, for the watchdog's hard row limit. */
+  startedAt?: number;
   result?: RowResult;
   textHash?: string;
   runId?: string;
@@ -44,6 +46,17 @@ export interface NightDeps {
   log(message: string): void;
 }
 export const completedCounts = (plan: NightPlan): Targets => Object.fromEntries(NIGHT_PLATFORMS.map(p => [p, plan.jobs.filter(j => j.platform === p && j.phase === 'done').length])) as Targets;
+
+export interface WorkerHeartbeat { pid: number; updatedAt: number }
+
+/** A live worker may spend many minutes inside Hermes without changing the checkpoint. */
+export function workerHealth(plan: NightPlan, heartbeat: WorkerHeartbeat | null, workerPid: number, now: number): 'healthy' | 'heartbeat_stale' | 'generation_stalled' {
+  const latest = Math.max(plan.updatedAt, heartbeat?.pid === workerPid ? heartbeat.updatedAt : 0);
+  if (now - latest > 5 * 60_000) return 'heartbeat_stale';
+  const generating = plan.jobs.find(job => job.phase === 'generating');
+  if (generating && now - (generating.startedAt ?? plan.updatedAt) > 35 * 60_000) return 'generation_stalled';
+  return 'healthy';
+}
 
 export function newNightPlan(id: string, targets: Targets, writeSheet: boolean, now: number, hours = 18): NightPlan {
   if (!/^[a-zA-Z0-9_-]{1,80}$/.test(id)) throw new Error('Invalid batch id.');
@@ -81,6 +94,7 @@ export async function runNight(plan: NightPlan, deps: NightDeps): Promise<NightP
   const stop = async (status: 'blocked' | 'incomplete', reason: string) => { plan.status = status; plan.reason = reason; await save(); return plan; };
   for (const j of plan.jobs) if (j.phase === 'generating') {
     j.phase = j.attempts >= 3 ? 'skipped' : 'queued';
+    delete j.startedAt;
     j.reason = 'Previous worker interrupted during generation; no Sheet write was attempted.';
   }
   await save();
@@ -94,10 +108,10 @@ export async function runNight(plan: NightPlan, deps: NightDeps): Promise<NightP
       // Quota waits can span a reset window, but never exceed this batch's deadline.
       const minutes = Math.min(60, 2 ** Math.min(plan.infrastructureFailures - 1, 6));
       plan.cooldownUntil = deps.now() + minutes * 60_000;
-      if (job?.phase === 'generating') job.phase = 'queued';
+      if (job?.phase === 'generating') { job.phase = 'queued'; delete job.startedAt; }
       if (plan.infrastructureFailures >= 16) { await stop('incomplete', `Infrastructure recovery limit reached: ${error}`); return false; }
       if (job && stage === 'sheet' && job.commitAttempts >= 12) { await stop('incomplete', `Approved post retained for Sheet recovery: ${error}`); return false; }
-    } else if (job) job.phase = 'skipped';
+    } else if (job) { job.phase = 'skipped'; delete job.startedAt; }
     await save();
     return true;
   };
@@ -139,7 +153,7 @@ export async function runNight(plan: NightPlan, deps: NightDeps): Promise<NightP
       } catch (e) { if (!await handle((e as Error).message, 'pick')) return plan; continue; }
     }
     if (job.phase === 'queued') {
-      job.phase = 'generating'; job.attempts++; await save();
+      job.phase = 'generating'; job.attempts++; job.startedAt = deps.now(); await save();
       deps.log(`${job.platform} row ${job.pick.rowIndex}: generating; ${counts[job.platform]}/${plan.targets[job.platform]} completed.`);
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), Math.min(25 * 60_000, Math.max(1, plan.deadline - deps.now())));
@@ -152,7 +166,7 @@ export async function runNight(plan: NightPlan, deps: NightDeps): Promise<NightP
         }
         job.textHash = shortHash(made.result.text ?? '', 32);
         assertReady(job);
-        job.phase = 'ready';
+        job.phase = 'ready'; delete job.startedAt;
         // Persist the complete approved text BEFORE attempting any Sheet mutation.
         await save();
       } catch (e) { if (!await handle((e as Error).message, 'generation', job)) return plan; continue; }

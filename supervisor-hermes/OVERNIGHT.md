@@ -54,7 +54,7 @@ npm run hermes:overnight -- --status --resume BATCH_ID
 
 Resume preserves saved targets and output mode. Do not supply new count flags on resume. A local-only batch cannot be switched to Sheet writes on resume. By default each new batch has an 18-hour execution window (`-Hours 1–72` / `--hours 1–72`). An expired window stops honestly as incomplete; extend it explicitly. Time estimates depend on model latency, retries and quota: 240 supervised posts may exceed one night, and completion is not guaranteed.
 
-State is in `output/supervisor-hermes/overnight/<id>.json`, with a compact recovery log in `<id>.log`. Background console output uses `<id>.stdout.log` and `<id>.stderr.log`. Per-row drafts, evidence snapshots and supervisor decisions stay under `output/supervisor-hermes/runs/<runId>/`. The checkpoint includes completed counts, quarantined rows, failure reasons and any approved packages awaiting Sheet delivery. No credentials are stored in it.
+State is in `output/supervisor-hermes/overnight/<id>.json`, with a compact recovery log in `<id>.log` and a small live pulse in `<id>.heartbeat.json`. Background console output uses `<id>.stdout.log` and `<id>.stderr.log`. Per-row drafts, evidence snapshots and supervisor decisions stay under `output/supervisor-hermes/runs/<runId>/`. The checkpoint includes completed counts, quarantined rows, failure reasons and any approved packages awaiting Sheet delivery. No credentials are stored in it. Status also reports whether the saved deadline has passed, whether the writer PID is alive, and whether its pulse is stale.
 
 ## Recovery policy
 
@@ -66,7 +66,7 @@ State is in `output/supervisor-hermes/overnight/<id>.json`, with a compact recov
 | Another text exists or the row moved/was processed | Do not overwrite. Quarantine the conflict and use another eligible row. |
 | Wrong/missing login, denied permissions, missing columns or invalid approved checkpoint | Save the failure and stop blocked without an interactive prompt. These require an external fix. |
 | Worker exits unexpectedly | Parent restarts from the checkpoint up to five times. An interrupted generation may be retried; after three interrupted attempts on a row it is quarantined. |
-| Stuck worker | Row cancellation is requested after 25 minutes; a parent watchdog restarts a worker with a stale checkpoint heartbeat after 30 minutes. Sheet requests have 30-second timeouts. |
+| Stuck worker | Row cancellation is requested after 25 minutes. The worker writes a separate pulse every 30 seconds during long Hermes calls. The parent rechecks a missing pulse after five minutes, then restarts only if it is still absent; a generation attempt also has a 35-minute hard ceiling. On Windows it terminates the worker's process tree. Sheet requests have 30-second timeouts. |
 | Too many bad candidates | Cap candidates at five times the target plus ten for each platform. Continue other platforms; report the unfilled target honestly. |
 | No rows left | Continue the other platforms and report incomplete counts rather than treating a smaller batch as complete. |
 

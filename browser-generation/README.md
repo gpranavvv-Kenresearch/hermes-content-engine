@@ -2,6 +2,8 @@
 
 This module contains the active generation logic copied from `x-posting-agent`. It is isolated from the Hermes social text engine so both systems can be changed independently.
 
+For complete machine, credential, Sheet, login, testing and recovery instructions, use the repository's [`docs/SETUP.md`](../docs/SETUP.md).
+
 ## Included flows
 
 ### Single image

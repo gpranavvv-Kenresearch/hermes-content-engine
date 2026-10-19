@@ -1,0 +1,75 @@
+# Hermes Content Engine requirements manifest
+#
+# This is a TypeScript/Node.js project, not a Python project.
+# Do NOT run: pip install -r requirements.txt
+# Install JavaScript dependencies from the authoritative lockfile with: npm ci
+
+# Operating system and command line
+Windows>=10
+PowerShell>=5.1
+Git-for-Windows>=2
+
+# JavaScript runtime
+Node.js>=22
+npm>=10
+
+# Required desktop/runtime software
+Google-Chrome=installed
+Hermes-Agent-CLI=installed-and-authenticated
+Hermes-provider=openai-codex
+
+# Required accounts and cloud services
+ChatGPT-account=image-generation-enabled
+Google-Sheets-API=enabled
+Google-Drive-API=enabled-for-blog-images
+Google-service-account=spreadsheet-editor
+Google-Drive-OAuth=desktop-client-with-refresh-token
+
+# Private local files (Git-ignored)
+.env=required
+.accounts/google-service-account.json=required
+.accounts/google-drive-oauth-client.json=required-for-blog-images
+.accounts/google-drive-token.json=required-for-blog-images
+.sessions/chatgpt-accounts/carousel-single=required-for-single-image
+.sessions/chatgpt-accounts/storyline=required-for-six-slide-carousel
+.sessions/chatgpt-accounts/social-image=required-for-blog-text
+.sessions/chatgpt-accounts/account2=required-for-blog-cover-image
+
+# Google Sheet structure
+Sheet-tab-Social-Media=required
+Sheet-tab-New-Logic=required-for-blog-generation
+Sheet-tab-Algo-Reports=required-for-performance-summary
+
+# npm production dependencies (package.json/package-lock.json remain authoritative)
+npm:@mozilla/readability=^0.6.0
+npm:@resvg/resvg-js=^2.6.2
+npm:@tavily/core=^0.7.14
+npm:cheerio=^1.2.0
+npm:cockatiel=^4.0.0
+npm:defuddle=^0.19.5
+npm:dotenv=^18.0.7
+npm:exa-js=^2.25.0
+npm:google-auth-library=^11.3.0
+npm:googleapis=^144.0.0
+npm:jsdom=^29.1.1
+npm:pino=^10.4.0
+npm:playwright=^1.64.0
+npm:rss-parser=^3.13.0
+npm:satori=^0.52.0
+npm:undici=^8.11.2
+npm:vega=^6.4.0
+npm:vega-lite=^6.5.0
+npm:zod=^4.6.7
+
+# npm development dependencies
+npm:@types/jsdom=^30.0.0
+npm:@types/node=^22.20.5
+npm:tsx=^4.23.15
+npm:typescript=^7.0.2
+npm:vitest=^5.0.4
+
+# Optional integrations
+Ollama=optional
+Tavily-API-key=optional
+Native-social-analytics-APIs=optional
+Playwright-managed-Chromium=optional-fallback

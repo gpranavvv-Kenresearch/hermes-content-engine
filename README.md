@@ -2,7 +2,7 @@
 
 Standalone TypeScript workspace for Ken Research Facebook and LinkedIn text. It reuses the proven evidence extraction, claim checks, style rules, bounded rewrite loop and Google Sheet adapter from the existing posting project, then adds a Hermes writing route, primary-keyword and depth gates, cross-run repair traces, and reviewed writing methods. It does not contain social posting code.
 
-For a fresh machine, begin with [setup and operating requirements](docs/SETUP.md).
+For a fresh machine, begin with the [complete setup and operating guide](docs/SETUP.md). The root [requirements.txt](requirements.txt) is the concise environment and dependency checklist; this remains a TypeScript project installed with `npm ci`, not `pip`.
 
 ## Current state
 
@@ -81,6 +81,7 @@ The feedback command updates future posts. It replaces the bounded active guidan
 | `src/repos/`, `config/techniques/` | GitHub review/intake and the approved writing methods used in prompts |
 | `src/sheets/` | Read pending Sheet rows and guarded single-cell Post write |
 | `.hermes/skills/` | Project-specific procedure for interactive Hermes use |
+| `browser-generation/` | Single image, six-slide PDF and blog-plus-images Playwright workflows |
 | `scripts/` | Local resource linking and optional scheduled generation |
 | `output/store/` | Local drafts, evidence plans, variants, repair lessons and attempt traces |
 | `output/social-runs/` | Reviewable final result for each social job |

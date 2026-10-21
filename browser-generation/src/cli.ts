@@ -35,10 +35,6 @@ async function runChild(command: string, args: string[], cwd = ROOT): Promise<vo
 
 function blogOptions(): BlogGenBatchOptions {
   const limit = flag('limit');
-  const prompt = flag('prompt');
-  if (prompt && !['v1', 'v2', 'master'].includes(prompt)) {
-    throw new Error('--prompt must be v1, v2, or master');
-  }
   return {
     limit: limit ? Number.parseInt(limit, 10) : undefined,
     withImage: has('with-image') && !has('no-image'),
@@ -46,7 +42,6 @@ function blogOptions(): BlogGenBatchOptions {
     blogAccountHandle: flag('blog-account'),
     imageAccountHandle: flag('image-account'),
     retryOnVerifyFail: !has('no-retry'),
-    promptVersion: prompt as BlogGenBatchOptions['promptVersion'],
   };
 }
 

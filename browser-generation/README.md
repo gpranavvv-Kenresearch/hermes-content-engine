@@ -65,7 +65,7 @@ npm run browser:blog -- --limit=1 --with-image
 npm run browser:blog-loop -- --limit=1 --with-image --interval=1800
 ```
 
-Blog options include `--blog-account=<name>`, `--image-account=<name>`, `--image-prompt=1|2`, `--prompt=v1|v2|master`, `--no-image`, and `--no-retry`.
+Blog options include `--blog-account=<name>`, `--image-account=<name>`, `--image-prompt=1|2`, `--no-image`, and `--no-retry`.
 
 ## Runtime locations
 

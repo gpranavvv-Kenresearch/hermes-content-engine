@@ -126,8 +126,6 @@ export interface BlogGenBatchOptions {
   imageAccountHandle?: string;
   /** Retry once if the post-write verification fails (default true). */
   retryOnVerifyFail?: boolean;
-  /** 'master' forces the master prompt every time, skipping the normal 50/50 Prompt B split — for manually testing the master prompt itself. */
-  promptVersion?: 'v1' | 'v2' | 'master';
 }
 
 /** One pass: generate up to `limit` pending Content Pool rows, verifying each write before moving on. */
@@ -194,11 +192,7 @@ export async function runBlogGenBatch(opts: BlogGenBatchOptions = {}): Promise<{
       try {
         let blog: BlogGenResult;
 
-        // Prompt selection is fully owned inside generateBlogViaChatGpt() now
-        // (50% the master prompt / 50% the 4-prompt Prompt B pool, picked
-        // there and logged there) — no promptVersion passed here means it
-        // never falls into the old v2 (keyword-focused) branch, which is
-        // intentionally retired from rotation (2026-09-25).
+        // The master prompt V1.3 is the only blog prompt; generateBlogViaChatGpt() loads it.
 
         if (opts.withImage && !coverImageUrl && !coverImageGaveUp) {
           // Blog (Chrome window #1) and cover image (Chrome window #2) run
@@ -229,7 +223,7 @@ export async function runBlogGenBatch(opts: BlogGenBatchOptions = {}): Promise<{
                 coverImageGaveUp = true;
                 return '';
               }),
-            generateBlogViaChatGpt({ title, url: row.targetUrl, accountHandle: opts.blogAccountHandle, promptVersion: opts.promptVersion }),
+            generateBlogViaChatGpt({ title, url: row.targetUrl, accountHandle: opts.blogAccountHandle }),
           ]);
           if (imgResult) coverImageUrl = imgResult;
           blog = blogResult;
@@ -239,7 +233,7 @@ export async function runBlogGenBatch(opts: BlogGenBatchOptions = {}): Promise<{
               ? `   Cover image already failed once for this row — not retrying it, opening 1 Chrome window (blog only)...`
               : `   Cover image already available — opening 1 Chrome window (blog only)...`);
           }
-          blog = await generateBlogViaChatGpt({ title, url: row.targetUrl, accountHandle: opts.blogAccountHandle, promptVersion: opts.promptVersion });
+          blog = await generateBlogViaChatGpt({ title, url: row.targetUrl, accountHandle: opts.blogAccountHandle });
         }
 
         let htmlWithImage = blog.html;

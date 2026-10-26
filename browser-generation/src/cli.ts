@@ -69,7 +69,7 @@ async function doctor(): Promise<void> {
 }
 
 function help(): void {
-  console.log(`Hermes browser generation\n\nCommands:\n  npm run browser:doctor\n  npm run browser:login -- <account>\n  npm run browser:single -- --row=5\n  npm run browser:single -- --count=5\n  npm run browser:carousel -- --row=5\n  npm run browser:carousel -- --count=5\n  npm run browser:blog -- --limit=1 --with-image\n  npm run browser:blog-loop -- --limit=1 --with-image --interval=1800\n\nAccounts normally used:\n  carousel-single  single image\n  storyline        six-slide carousel\n  social-image     blog text\n  account2         blog cover image`);
+  console.log(`Hermes browser generation\n\nCommands:\n  npm run browser:doctor\n  npm run browser:login -- <account>\n  npm run browser:single -- --row=5\n  npm run browser:single -- --count=5\n  npm run browser:carousel -- --row=5\n  npm run browser:carousel -- --count=5\n  npm run browser:blog -- --limit=1 --with-image\n  npm run browser:blog-loop -- --limit=1 --with-image --interval=1800\n  npm run browser:blog -- --limit=10 --structure=rotate   (v1.3 | rotate | random | <architecture id>)\n  npm run browser:blog-structures   (rebuild the per-architecture prompt files from V1.3)\n\nAccounts normally used:\n  carousel-single  single image\n  storyline        six-slide carousel\n  social-image     blog text\n  account2         blog cover image`);
 }
 
 async function main(): Promise<void> {
@@ -80,11 +80,15 @@ async function main(): Promise<void> {
     return runChild(process.execPath, ['--import', 'tsx', path.join(MODULE_ROOT, 'src/tools/loginChatGpt.ts'), account]);
   }
   if (command === 'single') {
-    return runChild(process.execPath, ['scripts/run_single_image_test.js', ...forwardedArgs(command)], path.join(MODULE_ROOT, 'single-image'));
+    return runChild(process.execPath, ['--import', 'tsx', 'scripts/run_single_image_test.js', ...forwardedArgs(command)], path.join(MODULE_ROOT, 'single-image'));
   }
   if (command === 'carousel') {
-    const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-    return runChild(npx, ['tsx', path.join(MODULE_ROOT, 'six-slide/scripts/runRow.ts'), ...forwardedArgs(command)]);
+    // Spawn node directly: Node on Windows rejects spawning npx.cmd without a shell (EINVAL).
+    return runChild(process.execPath, ['--import', 'tsx', path.join(MODULE_ROOT, 'six-slide/scripts/runRow.ts'), ...forwardedArgs(command)]);
+  }
+  if (command === 'blog' || command === 'blog-loop') {
+    const structure = flag('structure');
+    if (structure) process.env.BLOG_STRUCTURE = structure;
   }
   if (command === 'blog') {
     const { runBlogGenBatch } = await import('./coordinator/blogGenLoop.js');

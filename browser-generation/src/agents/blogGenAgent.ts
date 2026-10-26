@@ -62,10 +62,16 @@ const MAX_POLLS = 15; // 15 checks * 1 min = 15 min total hard cap
  * file stops generation so a stale prompt is never sent silently.
  */
 const MASTER_PROMPT_FILE = path.resolve('browser-generation/prompts/blog-generation/01-master-v1.3-live.txt');
-export function buildMasterBlogPrompt(reportTitle: string, reportUrl: string): string {
-  const tpl = fs.readFileSync(MASTER_PROMPT_FILE, 'utf-8');
+import { chooseStructure, DEFAULT_STRUCTURE, structureFile } from './blogStructures.js';
+export function buildMasterBlogPrompt(reportTitle: string, reportUrl: string, structureMode?: string): string {
+  // Default stays the live V1.3 prompt. BLOG_STRUCTURE (set by --structure=) opts into one of the standalone
+  // architecture prompts: an id, rotate or random (see blogStructures.ts).
+  const structure = chooseStructure(structureMode);
+  const promptFile = structure === DEFAULT_STRUCTURE ? MASTER_PROMPT_FILE : structureFile(structure);
+  if (structure !== DEFAULT_STRUCTURE) console.log(`   [blog] Structure prompt: ${structure}`);
+  const tpl = fs.readFileSync(promptFile, 'utf-8');
   if (tpl.trim().length < 1000) {
-    throw new Error(`${MASTER_PROMPT_FILE} is empty or too short; refusing to send an incomplete master prompt`);
+    throw new Error(`${promptFile} is empty or too short; refusing to send an incomplete blog prompt`);
   }
   return tpl.replace(/\{\{REPORT_TITLE\}\}/g, reportTitle).replace(/\{\{REPORT_URL\}\}/g, reportUrl);
 }
@@ -408,6 +414,8 @@ async function isLoggedIn(page: Page): Promise<boolean> {
 // unreliable once the page has already navigated. Best-effort — a failure
 // here should never abort generation.
 async function minimizeToTaskbar(context: BrowserContext, page: Page): Promise<void> {
+  // BLOG_SHOW_BROWSER=1 (the --show-browser flag) keeps the Chrome window visible so the generation can be watched.
+  if (process.env.BLOG_SHOW_BROWSER === '1') return;
   try {
     const cdp = await context.newCDPSession(page);
     const { windowId } = await (cdp as any).send('Browser.getWindowForTarget');
@@ -434,11 +442,37 @@ async function logChatGptSessionState(page: Page): Promise<void> {
  * retry/skip. Independent of blogImageAgent.ts's browser — safe to run both
  * concurrently via Promise.all.
  */
-export async function generateBlogViaChatGpt(params: {
+/** One ChatGPT chat that can write the blog and then be asked, in the SAME chat, to fix specific problems. */
+export interface BlogChatSession {
+  /** Send the blog prompt, wait for the article and extract it. */
+  generate(): Promise<BlogGenResult>;
+  /** Send a follow-up in the same chat and extract the corrected deliverable. */
+  revise(instruction: string): Promise<BlogGenResult>;
+  close(): Promise<void>;
+}
+
+function noteChatGptFailure(err: any): never {
+  const { rotated, account } = recordChatGptFailure();
+  if (rotated) err.message = `${err.message} (rotated out — next attempt uses "${account}")`;
+  throw err;
+}
+
+async function clickSendButton(page: Page): Promise<boolean> {
+  const sendBtn = page.locator(SEND_BUTTON_SELECTOR).first();
+  if (!(await sendBtn.isVisible({ timeout: 3000 }).catch(() => false))) return false;
+  await sendBtn.click();
+  return true;
+}
+
+export async function openBlogChatSession(params: {
   title: string;
   url: string;
   accountHandle?: string;
-}): Promise<BlogGenResult> {
+  /** v1.3 (default), or an architecture id from blogStructures.ts. */
+  structure?: string;
+  /** Appended to the prompt (used when a fresh chat restarts after an editorial rejection). */
+  promptSuffix?: string;
+}): Promise<BlogChatSession> {
   const accountName = params.accountHandle || DEFAULT_BLOG_ACCOUNT;
   const sessionDir = sessionDirForAccount(accountName);
   fs.mkdirSync(sessionDir, { recursive: true });
@@ -463,9 +497,11 @@ export async function generateBlogViaChatGpt(params: {
     ],
   });
 
+
   let stopPopupWatcher: () => void = () => {};
+  let page: Page;
   try {
-    const page = context.pages()[0] ?? await context.newPage();
+    page = context.pages()[0] ?? await context.newPage();
     await minimizeToTaskbar(context, page);
     await page.goto('https://chatgpt.com/new', { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.waitForTimeout(2000);
@@ -473,8 +509,16 @@ export async function generateBlogViaChatGpt(params: {
     await logChatGptSessionState(page);
 
     stopPopupWatcher = startContinuousPopupWatcher(page);
+  } catch (err: any) {
+    stopPopupWatcher();
+    await context.close().catch(() => {});
+    noteChatGptFailure(err);
+  }
 
-    const prompt = buildMasterBlogPrompt(params.title, params.url);
+  return {
+    async generate(): Promise<BlogGenResult> {
+      try {
+    const prompt = buildMasterBlogPrompt(params.title, params.url, params.structure) + (params.promptSuffix ?? '');
     console.log(`   [blog:${accountName}] Sending blog prompt (master V1.3) for: "${params.title}" (~12-15 min generation)...`);
     // The master prompt is ~45-50k characters — long enough that a clipboard
     // paste unreliably lands as either composer text or an auto-converted
@@ -602,12 +646,56 @@ export async function generateBlogViaChatGpt(params: {
       imageData: sanitizeHtml(imageData),
       imageData2: sanitizeHtml(imageData2),
     };
-  } catch (err: any) {
-    const { rotated, account } = recordChatGptFailure();
-    if (rotated) err.message = `${err.message} (rotated out — next attempt uses "${account}")`;
-    throw err;
+      } catch (err: any) {
+        noteChatGptFailure(err);
+      }
+    },
+
+    async revise(instruction: string): Promise<BlogGenResult> {
+      try {
+        console.log(`   [blog:${accountName}] Sending a targeted fix request in the same chat...`);
+        await dismissBlockingModals(page);
+        await pasteIntoChatGptComposer(page, instruction);
+        await page.waitForTimeout(800);
+        if (!(await clickSendButton(page))) await page.keyboard.press('Enter');
+        await page.waitForTimeout(3000);
+        await waitForBlogCompletion(page);
+        const revised = await extractBlogStable(page, params.title);
+        if (!/<h1[\s>]/i.test(revised.html) || !/<h2[\s>]/i.test(revised.html)) {
+          throw new Error('REVISION_NOT_ARTICLE: the fix reply did not contain the full article.');
+        }
+        recordChatGptSuccess();
+        return {
+          title: sanitizeHtml(revised.title),
+          description: sanitizeHtml(revised.description),
+          html: injectBlogUtm(sanitizeHtml(revised.html)),
+          seoTitle: sanitizeHtml(revised.seoTitle),
+          imageData: sanitizeHtml(revised.imageData),
+          imageData2: sanitizeHtml(revised.imageData2),
+        };
+      } catch (err: any) {
+        noteChatGptFailure(err);
+      }
+    },
+
+    async close(): Promise<void> {
+      stopPopupWatcher();
+      await context.close().catch(() => {});
+    },
+  };
+}
+
+/** Legacy one-shot path (used by blogGenLoop.ts): open a chat, generate once, close. */
+export async function generateBlogViaChatGpt(params: {
+  title: string;
+  url: string;
+  accountHandle?: string;
+  structure?: string;
+}): Promise<BlogGenResult> {
+  const session = await openBlogChatSession(params);
+  try {
+    return await session.generate();
   } finally {
-    stopPopupWatcher();
-    await context.close().catch(() => {});
+    await session.close();
   }
 }

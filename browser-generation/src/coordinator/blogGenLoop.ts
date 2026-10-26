@@ -36,7 +36,7 @@ import { getContentPoolRowsNeedingGeneration, saveGeneratedBlogToPool, saveCover
 // data from day one (can't back-fill it later). Switch to 'direct' here (or
 // wire up per-row rotation) once there's baseline click data to compare
 // against. See src/agents/blogPreferredSourceAgent.ts for what each mode does.
-const PREFERRED_SOURCE_MODE: PreferredSourceMode = 'direct';
+export const PREFERRED_SOURCE_MODE: PreferredSourceMode = 'direct';
 
 /**
  * Force the cover/header image at the very TOP of the article, before the
@@ -50,7 +50,7 @@ const PREFERRED_SOURCE_MODE: PreferredSourceMode = 'direct';
  * confirmed live 2026-09-18. Snapshot injection must also run BEFORE this,
  * so its placeholder is already gone by the time this ever looks for one.
  */
-function injectCoverImage(html: string, imageUrl: string): string {
+export function injectCoverImage(html: string, imageUrl: string): string {
   if (!imageUrl) return html;
   // Double quotes — matches the mid-article snapshot <img> (which keeps
   // whatever quote style the V1.3 prompt's "<img src=... alt=...>" spec
@@ -66,13 +66,13 @@ function injectCoverImage(html: string, imageUrl: string): string {
  * matching the SECOND placeholder (YOUR_IMAGE_URL_HERE_2), since that token
  * starts with the same literal text.
  */
-function injectSnapshotImage(html: string, snapshotUrl: string): string {
+export function injectSnapshotImage(html: string, snapshotUrl: string): string {
   if (!snapshotUrl) return html;
   return html.replace(/YOUR_IMAGE_URL_HERE(?!_2)/g, snapshotUrl);
 }
 
 /** Second mid-article image — replaces <img src="YOUR_IMAGE_URL_HERE_2"> with the generated-and-uploaded "Forecast Outlook & Market Landscape" image URL. */
-function injectSnapshotImage2(html: string, landscapeUrl: string): string {
+export function injectSnapshotImage2(html: string, landscapeUrl: string): string {
   if (!landscapeUrl) return html;
   return html.replace(/YOUR_IMAGE_URL_HERE_2/g, landscapeUrl);
 }
@@ -89,7 +89,7 @@ function injectSnapshotImage2(html: string, landscapeUrl: string): string {
  * whose src isn't a real http(s) URL is dropped entirely — better an
  * article with one fewer image than one with a visibly broken one.
  */
-function stripUnresolvedImagePlaceholders(html: string): { html: string; removed: number } {
+export function stripUnresolvedImagePlaceholders(html: string): { html: string; removed: number } {
   let removed = 0;
   const out = html.replace(/<img\s+src='([^']*)'\s*>\s*\n?/gi, (tag, src) => {
     if (/^https?:\/\//i.test(src.trim())) return tag;
@@ -103,7 +103,7 @@ const MIN_WORDS = 400; // real articles are 1,450-1,600 words — this is a "did
 
 /** Re-read the row from the sheet and confirm the write actually took (content present). A missing cover
  * image is NOT a failure — the text is still good and stays in the sheet; we just note it. */
-async function verifyWrite(rowIndex: number, expectImage: boolean): Promise<{ ok: boolean; reason?: string }> {
+export async function verifyWrite(rowIndex: number, expectImage: boolean): Promise<{ ok: boolean; reason?: string }> {
   const fresh = await getSheetRowByIndex(rowIndex, 'newLogic');
   if (!fresh) return { ok: false, reason: 'row disappeared on re-read' };
 

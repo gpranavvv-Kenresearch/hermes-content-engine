@@ -4,6 +4,7 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "strict": false,
+    "strictNullChecks": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
@@ -11,5 +12,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["src/**/*.ts", "six-slide/scripts/**/*.ts"]
+  "include": ["src/**/*.ts", "six-slide/scripts/**/*.ts", "blog-supervisor/**/*.ts"]
 }

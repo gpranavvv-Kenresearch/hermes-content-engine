@@ -595,6 +595,8 @@ async function isLoggedIn(page: Page): Promise<boolean> {
 // unreliable once the page has already navigated. Best-effort — a failure
 // here should never abort generation.
 async function minimizeToTaskbar(context: BrowserContext, page: Page): Promise<void> {
+  // BLOG_SHOW_BROWSER=1 (the --show-browser flag) keeps the Chrome window visible so the generation can be watched.
+  if (process.env.BLOG_SHOW_BROWSER === '1') return;
   try {
     const cdp = await context.newCDPSession(page);
     const { windowId } = await (cdp as any).send('Browser.getWindowForTarget');

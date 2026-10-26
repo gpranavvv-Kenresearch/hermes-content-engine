@@ -151,16 +151,16 @@ function parseNameList(value: string): string[] {
 function buildBubbleWidget(title: string, items: NamedShare[]): string {
   const sorted = [...items].sort((a, b) => b.pct - a.pct);
   const maxPct = sorted[0]?.pct || 1;
-  const k = 30 / Math.sqrt(maxPct);
+  const k = 38 / Math.sqrt(maxPct);
   const bubbles = sorted.map((s, i) => {
-    const r = Math.max(13, Math.round(k * Math.sqrt(s.pct)));
+    // Radius stays strictly proportional to sqrt(share) so bubble AREA is the share; the label sits below, never inside.
+    const r = Math.max(10, Math.round(k * Math.sqrt(s.pct)));
     const isLeading = i === 0;
     return `
       <div class="bubble-col">
         ${isLeading ? '<div class="leading-badge">Leading</div>' : ''}
-        <div class="bubble${isLeading ? ' bubble-leading' : ''}" style="width:${r * 2}px;height:${r * 2}px;background:${CHART_COLORS[i % CHART_COLORS.length]};">
-          <span class="bubble-pct">${s.pct}%</span>
-        </div>
+        <div class="bubble${isLeading ? ' bubble-leading' : ''}" style="width:${r * 2}px;height:${r * 2}px;background:${CHART_COLORS[i % CHART_COLORS.length]};"></div>
+        <div class="bubble-pct-out" style="color:${CHART_COLORS[i % CHART_COLORS.length]};">${s.pct}%</div>
         <div class="bubble-name">${escapeHtml(s.name)}</div>
       </div>`;
   }).join('');
@@ -209,17 +209,25 @@ function compactTrendValue(value: string): { main: string; unit: string } {
   return m ? { main: m[1].trim(), unit: m[2] || '' } : { main: value, unit: '' };
 }
 
+/** "#2f5fa3" + 0.35 -> "rgba(47,95,163,0.35)". Falls back to the colour unchanged if it is not a 6-digit hex. */
+export function withAlpha(hex: string, alpha: number): string {
+  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex.trim());
+  if (!m) return hex;
+  return `rgba(${parseInt(m[1]!, 16)},${parseInt(m[2]!, 16)},${parseInt(m[3]!, 16)},${alpha.toFixed(2)})`;
+}
+
 function buildTrendBubbleWidget(title: string, points: TrendPoint[], color: string): string {
   const n = points.length;
-  const minPx = 44, maxPx = 82;
+  const minPx = n >= 3 ? 56 : 66, maxPx = n >= 3 ? 96 : 112;
   const items = points.map((p, i) => {
     const size = minPx + (p.pct / 100) * (maxPx - minPx);
     const opacity = n === 1 ? 1 : 0.35 + (i / (n - 1)) * 0.65;
     const textColor = opacity > 0.6 ? '#ffffff' : '#1e293b';
     const { main, unit } = compactTrendValue(p.value);
+    // Fade only the FILL, never the text: opacity on the whole bubble made the earliest point's number nearly invisible.
     return `
       <div class="trend-bubble-item">
-        <div class="trend-bubble" style="width:${size}px;height:${size}px;background:${color};opacity:${opacity.toFixed(2)};color:${textColor};">
+        <div class="trend-bubble" style="width:${size}px;height:${size}px;background:${withAlpha(color, opacity)};color:${textColor};">
           <div class="trend-bubble-main">${escapeHtml(main)}</div>
           ${unit ? `<div class="trend-bubble-unit">${escapeHtml(unit)}</div>` : ''}
         </div>
@@ -228,9 +236,9 @@ function buildTrendBubbleWidget(title: string, points: TrendPoint[], color: stri
   });
   const withArrows = items.reduce<string[]>((acc, cur, i) => i === 0 ? [cur] : [...acc, '<span class="trend-arrow">&#8594;</span>', cur], []).join('');
   return `
-      <div class="widget" style="--accent:${color};">
+      <div class="widget" style="--accent:${color};${n >= 3 ? 'grid-column: 1 / -1;' : ''}">
         <div class="chart-title">${escapeHtml(title)}</div>
-        <div class="trend-bubble-row">${withArrows}</div>
+        <div class="trend-bubble-row"${n >= 3 ? ' style="flex-wrap:nowrap;"' : ''}>${withArrows}</div>
       </div>`;
 }
 
@@ -399,11 +407,8 @@ export function buildSnapshotHtml(marketName: string, metrics: SnapshotMetric[])
   // leftover blank cells wherever possible — a fixed 3 columns left 2 dead
   // cells for a 4-widget row (confirmed live 2026-09-18: "Average Blended
   // ASP" sat alone in a row with visible empty space beside it).
-  const widgetCols = widgets.length <= 1 ? 1
-    : widgets.length === 2 ? 2
-    : widgets.length % 3 === 0 ? 3
-    : widgets.length % 2 === 0 ? 2
-    : 3;
+  // The card is article-column width (832px), so two columns is the most that stays readable. An odd last widget spans the full row (CSS).
+  const widgetCols = widgets.length <= 1 ? 1 : 2;
 
   // Exact same proportions as the Desktop/agents/generate_table_image.py
   // reference (1100x530), scaled up 1.3636x to a 1500-wide canvas — same
@@ -599,6 +604,49 @@ export function buildSnapshotHtml(marketName: string, metrics: SnapshotMetric[])
     white-space: nowrap;
   }
   .player-dot { width: 5px; height: 5px; border-radius: 50%; background: #234a92; flex-shrink: 0; }
+
+  /* Article-column sizing. This image is shown about 760px wide in the blog, so the card is 832px wide with larger type
+     (a 1100px card scaled down made every label unreadable). */
+  html, body { width: 832px; }
+  .header { padding: 16px 26px; }
+  .header-eyebrow { font-size: 12px; }
+  .header-title { font-size: 28px; }
+  .header-sub { font-size: 15.5px; }
+  .header-badge { font-size: 15px; padding: 9px 22px; white-space: nowrap; flex-shrink: 0; margin-left: 18px; }
+  .hero-row { padding: 14px 22px; gap: 14px; margin-top: 12px; }
+  .hero-value { font-size: 26px; }
+  .hero-label { font-size: 12.5px; }
+  .hero-cagr { font-size: 14px; padding: 5px 13px; }
+  .hero-arrow { font-size: 20px; }
+  .kpi-col { width: 250px; min-width: 250px; }
+  .kpi-value { font-size: 26px; }
+  .kpi-label { font-size: 13.5px; }
+  .section-label { font-size: 14px; padding: 14px 24px; }
+  tr.data-row td { font-size: 18px; padding: 13px 24px; }
+  .col-metric { width: 42%; }
+  .chart-title { font-size: 13px; margin-bottom: 8px; }
+  .widget-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .widget { padding: 14px 18px; }
+  .widget:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .bubble-row { gap: 10px 8px; justify-content: space-around; }
+  .bubble-col { flex: 0 1 auto; min-width: 72px; gap: 4px; }
+  .bubble-pct-out { font-size: 17px; font-weight: 900; line-height: 1.1; }
+  .bubble-name { font-size: 12.5px; }
+  .leading-badge { font-size: 10.5px; padding: 3px 9px; }
+  .waffle-wrap { gap: 18px; }
+  .waffle-grid { width: 150px; gap: 3px; }
+  .waffle-dot { width: 11px; height: 11px; }
+  .waffle-pct { font-size: 30px; }
+  .waffle-label { font-size: 13px; }
+  .trend-bubble-row { gap: 12px; padding-top: 8px; }
+  .trend-bubble-main { font-size: 16px; }
+  .trend-bubble-unit { font-size: 12px; }
+  .trend-bubble-year { font-size: 14px; }
+  .trend-arrow { font-size: 24px; }
+  .players-card { padding: 12px 18px; }
+  .player-chip { font-size: 14px; padding: 6px 14px; }
+  .player-dot { width: 7px; height: 7px; }
+  .footer { font-size: 12.5px; padding: 10px 26px 12px; }
 
   .footer {
     background: #f4f6fb;

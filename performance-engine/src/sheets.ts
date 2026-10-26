@@ -204,6 +204,44 @@ export function adviceRecords(advice: LearningAdvice): SheetRecord[] {
  * One readable Sheet row for one platform run. Detailed observations remain in the local state store;
  * this row gives the user the decision view requested in columns H:M.
  */
+/**
+ * One Algo Reports row PER POST for a per-post Hermes review. The id is stable per platform and post, so a rerun updates
+ * the same row instead of appending a duplicate. The readable summary columns H:M are filled for this one post.
+ */
+export function postReviewRecords(advice: LearningAdvice, at: Date = new Date(advice.at)): SheetRecord[] {
+  const platformName = advice.platform === 'linkedin' ? 'LinkedIn' : advice.platform === 'facebook' ? 'Facebook' : advice.platform === 'x' ? 'X' : 'Tumblr';
+  const source = advice.modelStatus === 'hermes' ? 'per-post Hermes review' : 'deterministic post review (Hermes summary unavailable)';
+  return advice.postInsights.map((insight) => {
+    const metrics = Object.entries(insight.visibleMetrics).map(([name, value]) => `${name}: ${value}`).join(' | ') || 'unavailable publicly';
+    const patterns = Object.entries(insight.patterns).map(([axis, pattern]) => `${axis}=${pattern}`).join('; ');
+    const weak = insight.weakSignals.length > 0;
+    const analysis = `POST REVIEW (${platformName})\nPost URL: ${insight.postUrl}\nOpening: ${insight.opening.slice(0, 300)}\nDetected pattern: ${patterns || 'none'}\n\nSEO\n${insight.seoAssessment}\n\nB2B VALUE\n${insight.b2bAssessment}\n\nPROBLEM\n${insight.contentProblem}`;
+    return {
+      id: `learning:post-review:${stableId(advice.platform, insight.postId)}`,
+      type: 'learning' as const,
+      at: at.toISOString(),
+      status: weak ? 'watch' : 'observe',
+      content: analysis,
+      recommendations: insight.recommendedTest,
+      fields: {
+        Platform: platformName,
+        'Rows Read': 1,
+        'Content Analysis': analysis.slice(0, 12000),
+        'Reach / Likes / Comments': metrics,
+        'Prompt Change Suggestion': `PROPOSED ONLY.\n${insight.recommendedTest}`.slice(0, 20000),
+        'Why Suggested': `${insight.contentProblem}${weak ? `\nWeak signals: ${insight.weakSignals.join('; ')}` : ''}`.slice(0, 20000),
+        'PE Platform': advice.platform,
+        'PE Post ID': insight.postId,
+        'PE Post URL': insight.postUrl,
+        'PE Pattern': patterns.slice(0, 1000),
+        'PE Action': 'post_review',
+        'PE Source': source,
+      },
+      payload: { adviceId: advice.id, postId: insight.postId, postUrl: insight.postUrl, patterns: insight.patterns, visibleMetrics: insight.visibleMetrics, weakSignals: insight.weakSignals },
+    };
+  });
+}
+
 export function simpleRunSummaryRecord(input: { platform: Platform; posts: Post[]; snapshots: Snapshot[]; findings: Finding[]; advice: LearningAdvice; guidance?: PromptGuidance; at?: Date }): SheetRecord {
   const at = input.at ?? new Date();
   const latest = new Map<string, Snapshot>();

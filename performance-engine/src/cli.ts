@@ -7,7 +7,7 @@ import { loadEnvFiles } from '../../src/llm/env.js';
 import { JsonFileStore } from '../../src/store/store.js';
 import { Account, Finding, LearningAdvice, Post, PromptGuidance, Snapshot, Policy, Source, Experiment, Strategy, thresholds, stableId, hash, type Metrics, type Platform } from './contracts.js';
 import { discover, loadAccounts } from './discovery.js';
-import { googleSheets, AnalyticsSheet, SOURCE_TAB, TAB, postRecord, snapshotRecord, findingRecord, postDiagnosticRecords, adviceRecords, simpleRunSummaryRecord, sourceRecord, experimentRecord, type SheetRecord } from './sheets.js';
+import { googleSheets, AnalyticsSheet, SOURCE_TAB, TAB, postRecord, snapshotRecord, findingRecord, postDiagnosticRecords, adviceRecords, postReviewRecords, simpleRunSummaryRecord, sourceRecord, experimentRecord, type SheetRecord } from './sheets.js';
 import { PerformanceStore, atomicWrite } from './store.js';
 import { NativeAdapters } from './platforms.js';
 import { PublicUrlAdapters, UniversalAdapters } from './public-platforms.js';
@@ -21,7 +21,7 @@ import { readImport } from './imports.js';
 import { attachHandoffs } from './metadata.js';
 import { parsePostUrl } from './urls.js';
 import { changeExperiment } from './experiments.js';
-import { createLearningAdvice } from './advisor.js';
+import { createLearningAdvice, PostReviewSchema, type PostReview, type ReviewProgress } from './advisor.js';
 import { buildPromptGuidance, guidanceRoot, loadPromptGuidance, replacePromptGuidance } from './guidance.js';
 
 const args = parseArgs({ options: { 'write-sheet': { type: 'boolean' }, late: { type: 'boolean' }, 'force-retry': { type: 'boolean' }, 'test-run': { type: 'boolean' }, json: { type: 'boolean' }, platform: { type: 'string' }, account: { type: 'string' }, accounts: { type: 'string' }, 'state-dir': { type: 'string' }, limit: { type: 'string' }, 'sync-limit': { type: 'string' }, file: { type: 'string' }, url: { type: 'string' }, query: { type: 'string' }, explain: { type: 'string' }, version: { type: 'string' }, id: { type: 'string' }, action: { type: 'string' }, help: { type: 'boolean' } }, allowPositionals: true });
@@ -220,7 +220,10 @@ async function main(): Promise<void> {
     if (command === 'advise' || testLoop || autoLoop) {
       const data = await payload();
       const sources = (await store.list('sources', Source)).filter(source => source.platform === 'all' || source.platform === platform);
-      const advice = await createLearningAdvice({ posts: data.posts, snapshots: data.snapshots, findings: data.findings, sources, platform: platform!, liveResearch: Boolean(v.query) || liveResearchUsed });
+      // One Hermes call per post. Reviews are saved as they finish, so a stopped run continues where it left off.
+      const reviewCache = { get: (key: string) => store.get('post-reviews', key, PostReviewSchema), put: (key: string, review: PostReview) => store.put('post-reviews', key, review) };
+      const reviewLabel: Record<ReviewProgress['source'], string> = { hermes: 'Hermes reviewed', cached: 'reused saved review of', fallback: 'FALLBACK (Hermes failed) for' };
+      const advice = await createLearningAdvice({ posts: data.posts, snapshots: data.snapshots, findings: data.findings, sources, platform: platform!, liveResearch: Boolean(v.query) || liveResearchUsed, cache: reviewCache, onProgress: (p) => { if (!jsonOutput) console.log(`   [${p.index}/${p.total}] ${reviewLabel[p.source]} ${p.url}${p.error ? ` (${p.error.slice(0, 90)})` : ''}`); } });
       await store.put('advice', advice.id, advice);
       const records = adviceRecords(advice); for (const record of records) await queue(record);
       emit({ adviceId: advice.id, modelStatus: advice.modelStatus, postReviews: advice.postInsights.length, promptRecommendations: advice.promptRecommendations.length, applied: false }, testLoop || autoLoop ? '5. HERMES SEO + B2B ADVISORY' : 'HERMES SEO + B2B ADVISORY', [['Hermes analysis', advice.modelStatus === 'hermes' ? 'Completed' : 'Fallback used'], ['Post reviews', advice.postInsights.length], ['Prompt-change proposals', advice.promptRecommendations.length], ['Research mode', label(advice.researchMode)], ['Apply mode', autoLoop ? 'Automatic replacement' : 'Suggestions only']]);
@@ -268,6 +271,8 @@ async function main(): Promise<void> {
         if (!advice) throw new Error('No saved Hermes advisory is available for the simple Sheet summary. Run performance:test-loop first.');
         const active = appliedGuidance ?? await loadPromptGuidance(guidanceRoot(), platform!);
         const matchingGuidance = active?.adviceId === advice.id ? active : undefined;
+        // One Algo Reports row per post review, then one collective summary row for the platform.
+        for (const record of postReviewRecords(advice)) await enqueue(store, record);
         await enqueue(store, simpleRunSummaryRecord({ platform: platform!, posts: data.posts, snapshots: data.snapshots, findings: data.findings, advice, ...(matchingGuidance ? { guidance: matchingGuidance } : {}) }));
       } else {
         // Rebuild detailed outbox records from durable state, closing the crash gap between observation save and enqueue.
@@ -279,8 +284,12 @@ async function main(): Promise<void> {
         for (const e of await store.list('experiments', Experiment)) await queue(experimentRecord(e));
       }
       const result = await flush(store, new AnalyticsSheet(googleSheets(process.env, true)), syncLimit);
-      const sync = { sheet: TAB, ...result };
-      emit(sync, autoLoop ? '8. GOOGLE SHEET SYNC' : testLoop ? '7. GOOGLE SHEET SYNC' : command === 'run' ? '6. GOOGLE SHEET SYNC' : 'GOOGLE SHEET SYNC', [['Sheet', TAB], ['Records verified', result.verified], ['Records pending', result.pending], ['Errors', result.errors]]);
+      const reviewRows = result.written.filter(w => w.id.startsWith('learning:post-review:')).map(w => w.row).sort((a, b) => a - b);
+      const summaryRows = result.written.filter(w => w.id.startsWith('summary:')).map(w => w.row);
+      const rowRange = reviewRows.length ? (reviewRows.at(-1)! - reviewRows[0]! + 1 === reviewRows.length ? `rows ${reviewRows[0]}-${reviewRows.at(-1)}` : `rows ${reviewRows[0]} to ${reviewRows.at(-1)} (not contiguous)`) : 'none written this run';
+      if (result.written.length) { await mkdir(store.root, { recursive: true }); await writeFile(path.join(store.root, 'sheet-rows.json'), JSON.stringify({ at: new Date().toISOString(), tab: TAB, rows: result.written }, null, 2), 'utf8'); }
+      const sync = { sheet: TAB, verified: result.verified, pending: result.pending, errors: result.errors, perPostRows: reviewRows.length, summaryRows };
+      emit(sync, autoLoop ? '8. GOOGLE SHEET SYNC' : testLoop ? '7. GOOGLE SHEET SYNC' : command === 'run' ? '6. GOOGLE SHEET SYNC' : 'GOOGLE SHEET SYNC', [['Sheet', TAB], ['Per-post review rows', `${reviewRows.length} (${rowRange})`], ['Platform summary row', summaryRows.length ? summaryRows.join(', ') : 'none written this run'], ['Row list saved to', 'sheet-rows.json in the state folder'], ['Records verified', result.verified], ['Records pending', result.pending], ['Errors', result.errors]]);
       if (!jsonOutput && !result.errors && !result.pending) console.log(`\n${divider()}\n  RUN COMPLETE - all available results are saved in ${TAB}.\n${divider()}\n`);
       if (result.errors || result.pending) process.exitCode = 2;
     } else if (!jsonOutput) console.log('\nSaved locally. Add --write-sheet to sync results to Algo Reports.');

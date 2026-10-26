@@ -11,13 +11,16 @@ export async function enqueue(store: PerformanceStore, record: SheetRecord): Pro
   const same = previous && JSON.stringify(previous.record) === JSON.stringify(clean);
   await store.put('outbox', clean.id, { record: clean, syncedHash: same ? previous.syncedHash : null, lastError: same ? previous.lastError : null, attempts: same ? previous.attempts : 0 });
 }
-export async function flush(store: PerformanceStore, sheet: AnalyticsSheet, limit = 25): Promise<{ verified: number; pending: number; errors: number }> {
+export interface WrittenRow { id: string; type: string; row: number }
+export async function flush(store: PerformanceStore, sheet: AnalyticsSheet, limit = 25): Promise<{ verified: number; pending: number; errors: number; written: WrittenRow[] }> {
   const all = await store.list('outbox', Outbox);
   const pending = all.filter(r => r.syncedHash !== hash(JSON.stringify(r.record))).sort((a, b) => a.record.at.localeCompare(b.record.at));
   let verified = 0, errors = 0;
+  const written: WrittenRow[] = [];
   for (const item of pending.slice(0, limit)) {
     try {
-      await sheet.upsert(item.record);
+      const { row } = await sheet.upsert(item.record);
+      written.push({ id: item.record.id, type: item.record.type, row });
       await store.put('outbox', item.record.id, { ...item, syncedHash: hash(JSON.stringify(item.record)), lastError: null, attempts: item.attempts + 1 }); verified++;
     } catch (error) {
       // API exceptions can contain request config / tokens. Store only an actionable generic message.
@@ -26,5 +29,5 @@ export async function flush(store: PerformanceStore, sheet: AnalyticsSheet, limi
       await store.put('outbox', item.record.id, { ...item, lastError: `Sheet sync failed: ${detail}. Saved locally for retry.`, attempts: item.attempts + 1 }); errors++; break;
     }
   }
-  return { verified, pending: pending.length - verified, errors };
+  return { verified, pending: pending.length - verified, errors, written };
 }

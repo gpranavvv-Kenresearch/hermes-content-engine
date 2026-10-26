@@ -25,6 +25,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import 'dotenv/config';
+import { uploadFileToGoogleDrive } from '../../src/utils/googleDriveUpload.js';
 import { getRow, getNextPendingRow, writeSevenSlide, type SheetRowInfo } from './sheetIO.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -73,8 +74,11 @@ async function processOneRow(target: SheetRowInfo): Promise<void> {
   const pdfPath = path.join(ROOT, 'images', `${slug}.pdf`);
   if (!fs.existsSync(pdfPath)) throw new Error(`PDF not found after build: ${pdfPath}`);
 
-  const cell = await writeSevenSlide(target.row, pdfPath);
-  console.log(`\n✅ Done. Wrote PDF path to 7Slide (${cell}) of row ${target.row}:\n   ${pdfPath}`);
+  // The 7Slide cell gets the Google Drive link, not the local path. If the
+  // upload throws, nothing is written and the local PDF is kept for a retry.
+  const { viewUrl } = await uploadFileToGoogleDrive(pdfPath);
+  const cell = await writeSevenSlide(target.row, viewUrl);
+  console.log(`\n✅ Done. Uploaded PDF to Drive and wrote the link to 7Slide (${cell}) of row ${target.row}:\n   ${viewUrl}\n   (local copy: ${pdfPath})`);
 }
 
 (async () => {

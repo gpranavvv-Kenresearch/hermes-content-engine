@@ -17,11 +17,14 @@ import { chromium } from 'playwright';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { config as loadEnv } from 'dotenv';
 import { pasteIntoChatGPTComposer } from './chatgpt_composer.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
-const PROFILE_DIR = process.env.CHATGPT_PROFILE_DIR || path.resolve('.sessions', 'chatgpt-accounts', 'carousel-single');
+const REPO_ROOT = path.resolve(ROOT, '..', '..');
+loadEnv({ path: path.join(REPO_ROOT, '.env'), quiet: true });
+const PROFILE_DIR = path.resolve(REPO_ROOT, process.env.CHATGPT_PROFILE_DIR || path.join('.sessions', 'chatgpt-accounts', 'carousel-single'));
 const IMAGES_DIR = path.join(ROOT, 'images');
 const CHATGPT_URL = 'https://chatgpt.com/images';
 
@@ -72,16 +75,110 @@ async function scanForGeneratedImage(page) {
   });
 }
 
+// ChatGPT sometimes shows "Which image do you like more?" with two candidates
+// and holds the result until one is picked or skipped. Skip it so the page
+// settles on a single final image instead of swapping/revoking blob URLs.
+async function dismissImageComparison(page) {
+  const skip = page.getByRole('button', { name: 'Skip', exact: true }).first();
+  if (await skip.isVisible({ timeout: 500 }).catch(() => false)) {
+    await skip.click().catch(() => {});
+    console.log('Dismissed "Which image do you like more?" comparison (Skip)');
+    await page.waitForTimeout(2000);
+    return true;
+  }
+  return false;
+}
+
+// Click Send and confirm ChatGPT actually took the prompt. The send button
+// stays disabled while a long paste/attachment is still processing, and a
+// click on a disabled button silently does nothing — so wait for it to be
+// enabled, then verify the composer emptied (or a Stop button appeared). If
+// not, press Enter and check once more.
+async function submitPrompt(page) {
+  const sendSelectors = [
+    'button[data-testid="send-button"]',
+    'button[aria-label="Send prompt"]',
+    'button[aria-label*="Send"]',
+  ];
+  const composer = page.locator('div[contenteditable="true"].ProseMirror, #prompt-textarea').first();
+  const hasStop = () => page.locator('button[data-testid="stop-button"], button[aria-label*="Stop"]').first().isVisible({ timeout: 500 }).catch(() => false);
+  // After a real send ChatGPT swaps the Send button for Stop/voice. (Not the
+  // composer text: a long prompt can land as an attachment, leaving the
+  // composer empty before Send is ever pressed.)
+  const sendVisible = () => page.locator(sendSelectors.join(', ')).first().isVisible({ timeout: 500 }).catch(() => false);
+  const wasSent = async () => (await hasStop()) || !(await sendVisible());
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    let clicked = false;
+    for (const sel of sendSelectors) {
+      const btn = page.locator(sel).last();
+      if (!(await btn.isVisible({ timeout: 3000 }).catch(() => false))) continue;
+      const enabled = await btn.isEnabled({ timeout: 15000 }).catch(() => false);
+      if (!enabled) continue;
+      await btn.click().catch(() => {});
+      clicked = true;
+      console.log(`Send clicked via "${sel}" (attempt ${attempt}/3)`);
+      break;
+    }
+    if (!clicked) {
+      console.log('Send button not usable, using Enter key...');
+      await composer.click().catch(() => {});
+      await page.keyboard.press('Enter');
+    }
+    await page.waitForTimeout(2500);
+    if (await wasSent()) return;
+    console.log('Prompt still sitting in composer after send — retrying...');
+  }
+  throw new Error('Prompt was pasted but ChatGPT never accepted the send (composer still full after 3 attempts).');
+}
+
+// ChatGPT sometimes finishes its turn with plain TEXT instead of an image
+// ("Image generation failed", "tool error", asking for a reference image to
+// upload, ...). Treat ANY finished text-only reply (no Stop button, same text on
+// two consecutive polls, no image on the page) as a failed attempt and resend,
+// instead of waiting out the full 15 min. Confirmed live 2026-10-22/23.
+const ASSISTANT_MESSAGE_SELECTOR = '[data-message-author-role="assistant"], [data-markdown-text-style="assistant-message"]';
+const MAX_RESENDS = 2;
+const RESEND_PREFIX = 'Generate from scratch. There is NO reference image and none will be provided — do not ask for uploads or earlier images. Follow the brief below exactly and generate the image now.';
+
+async function assistantState(page) {
+  const { count, text } = await page.evaluate((sel) => {
+    const msgs = document.querySelectorAll(sel);
+    return { count: msgs.length, text: msgs.length ? (msgs[msgs.length - 1].innerText || '') : '' };
+  }, ASSISTANT_MESSAGE_SELECTOR).catch(() => ({ count: 0, text: '' }));
+  const generating = await page.locator('button[data-testid="stop-button"], button[aria-label*="Stop"]').first().isVisible({ timeout: 500 }).catch(() => false);
+  return { count, text, generating };
+}
+
 // After pasting the prompt: recheck every 1 minute, up to 15 times
 // (15 minutes total) before giving up.
-async function findGeneratedImage(page) {
+async function findGeneratedImage(page, promptText) {
+  let resends = 0;
+  let baselineCount = 0; // assistant messages present when the prompt was last sent
+  let prevText = '';
   for (let attempt = 1; attempt <= 15; attempt++) {
     console.log(`Checking for image (${attempt}/15)...`);
     await page.waitForTimeout(60 * 1000);
+    await dismissImageComparison(page);
     const found = await scanForGeneratedImage(page);
     if (found && found.src) {
       console.log(`Image found: ${found.naturalWidth}x${found.naturalHeight} (src starts: ${found.src.slice(0, 60)}...)`);
       return found;
+    }
+
+    const state = await assistantState(page);
+    const textOnlyReply = !state.generating && state.count > baselineCount && state.text.trim().length > 0 && state.text === prevText;
+    prevText = state.text;
+    if (textOnlyReply) {
+      if (resends >= MAX_RESENDS) throw new Error(`ChatGPT replied with text instead of an image after ${MAX_RESENDS} resends: ${state.text.slice(0, 200)}`);
+      resends++;
+      console.log(`ChatGPT replied with text, no image (${JSON.stringify(state.text.slice(0, 120))}...) — resending (${resends}/${MAX_RESENDS})...`);
+      baselineCount = state.count;
+      await pasteIntoChatGPTComposer(page, `${RESEND_PREFIX}
+
+${promptText}`);
+      await page.waitForTimeout(1000);
+      await submitPrompt(page);
     }
   }
 
@@ -180,33 +277,11 @@ try {
   await page.waitForTimeout(1000);
 
   console.log('Clicking send...');
-  const sendSelectors = [
-    'button[data-testid="send-button"]',
-    'button[aria-label="Send prompt"]',
-    'button[aria-label*="Send"]',
-    'button:has(svg)[data-disabled="false"]',
-    'div[class*="composer"] button:last-child',
-    'form button[type="submit"]',
-  ];
-
-  let sendClicked = false;
-  for (const sel of sendSelectors) {
-    const btn = page.locator(sel).last();
-    if (await btn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await btn.click();
-      sendClicked = true;
-      console.log(`Send clicked via "${sel}"`);
-      break;
-    }
-  }
-  if (!sendClicked) {
-    console.log('Send button not found, using Enter key...');
-    await page.keyboard.press('Enter');
-  }
+  await submitPrompt(page);
 
   // ---------- Wait for image (returns plain JS object {src, naturalWidth, naturalHeight}) ----------
-  console.log('Waiting for image (up to 10 minutes)...');
-  const generatedImage = await findGeneratedImage(page);
+  console.log('Waiting for image (up to 15 minutes)...');
+  const generatedImage = await findGeneratedImage(page, prompt);
 
   console.log(`Full image ready: ${generatedImage.naturalWidth}x${generatedImage.naturalHeight}px`);
 
@@ -214,34 +289,51 @@ try {
   console.log('Stability wait (30s) for full generation to settle...');
   await page.waitForTimeout(30 * 1000);
 
-  // Re-check the image src â€” the largest image may have been swapped (e.g.,
-  // from initial preview to final full-res) during the stability wait.
-  const finalImage = await page.evaluate(() => {
-    const imgs = Array.from(document.querySelectorAll('img'));
-    const candidates = imgs.filter(img => Math.max(img.naturalWidth || 0, img.naturalHeight || 0) >= 800);
-    if (!candidates.length) return null;
-    const target = candidates[candidates.length - 1];
-    return { src: target.src, naturalWidth: target.naturalWidth, naturalHeight: target.naturalHeight };
-  });
-  const imgSrc = finalImage?.src || generatedImage.src;
-  if (!imgSrc) throw new Error('Could not resolve final image src after stability wait');
-  console.log(`Final src: ${imgSrc.slice(0, 80)}... (${finalImage?.naturalWidth}x${finalImage?.naturalHeight})`);
-
-  console.log('Downloading via browser fetch...');
-  const base64Data = await page.evaluate(async (url) => {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
-    const blob = await response.blob();
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result.split(',')[1]);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  }, imgSrc);
-
-  const buffer = Buffer.from(base64Data, 'base64');
-  fs.writeFileSync(outPath, buffer);
+  // Re-resolve the image after the stability wait (a comparison prompt may have
+  // appeared meanwhile and swapped the candidates), then download. Blob URLs can
+  // be revoked between resolve and fetch, so retry; fall back to screenshotting
+  // the rendered <img> element if fetching never works.
+  let saved = false;
+  let lastErr;
+  for (let attempt = 1; attempt <= 3 && !saved; attempt++) {
+    await dismissImageComparison(page);
+    const finalImage = (await scanForGeneratedImage(page)) || generatedImage;
+    const imgSrc = finalImage.src;
+    console.log(`Final src (attempt ${attempt}/3): ${imgSrc.slice(0, 80)}... (${finalImage.naturalWidth}x${finalImage.naturalHeight})`);
+    try {
+      const base64Data = await page.evaluate(async (url) => {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
+        const blob = await response.blob();
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result.split(',')[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      }, imgSrc);
+      const buffer = Buffer.from(base64Data, 'base64');
+      if (buffer.length < 50 * 1024) throw new Error(`Downloaded image too small (${buffer.length} bytes)`);
+      fs.writeFileSync(outPath, buffer);
+      saved = true;
+    } catch (e) {
+      lastErr = e;
+      console.warn(`Download attempt ${attempt} failed: ${e.message}`);
+      await page.waitForTimeout(5000);
+    }
+  }
+  if (!saved) {
+    console.log('Fetch failed — falling back to element screenshot...');
+    const handles = await page.locator('img').elementHandles();
+    let best = null;
+    for (const h of handles) {
+      const size = await h.evaluate((el) => Math.max(el.naturalWidth || 0, el.naturalHeight || 0));
+      if (size >= 800) best = h;
+    }
+    if (!best) throw new Error(`Could not download generated image: ${lastErr?.message}`);
+    await best.scrollIntoViewIfNeeded().catch(() => {});
+    fs.writeFileSync(outPath, await best.screenshot({ type: 'png' }));
+  }
 
   if (!fs.existsSync(outPath)) throw new Error('File not found after saving');
   const stats = fs.statSync(outPath);

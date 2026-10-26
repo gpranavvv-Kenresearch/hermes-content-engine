@@ -20,20 +20,23 @@
 //     → process 5 consecutive rows starting at row 10 (10,11,12,13,14),
 //       skipping any that already have col E filled or no title
 
-import 'dotenv/config';
+import { config as loadEnv } from 'dotenv';
 import { google } from 'googleapis';
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { uploadFileToGoogleDrive } from '../../src/utils/googleDriveUpload.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
+const REPO_ROOT = path.resolve(ROOT, '..', '..');
+loadEnv({ path: path.join(REPO_ROOT, '.env'), quiet: true });
 
 const SHEET_ID = process.env.SOCIAL_SHEET_ID || process.env.CE_SHEET_ID;
-const SA_FILE  = process.env.GOOGLE_SERVICE_ACCOUNT_FILE
+const SA_FILE  = path.resolve(REPO_ROOT, process.env.GOOGLE_SERVICE_ACCOUNT_FILE
   || process.env.CE_GOOGLE_SA_FILE
-  || path.resolve('.accounts', 'google-service-account.json');
+  || path.join('.accounts', 'google-service-account.json'));
 const TAB      = 'Social Media';
 const COL_A    = 0;  // targetUrl
 const COL_B    = 1;  // title
@@ -58,7 +61,9 @@ async function getSheetsClient() {
     console.error('Missing SOCIAL_SHEET_ID/CE_SHEET_ID or Google service-account file configuration.');
     process.exit(1);
   }
-  const SA = JSON.parse(fs.readFileSync(SA_FILE, 'utf8'));
+  const SA = process.env.GOOGLE_SERVICE_ACCOUNT_JSON
+    ? JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON)
+    : JSON.parse(fs.readFileSync(SA_FILE, 'utf8'));
   const auth = new google.auth.JWT({
     email: SA.client_email,
     key: SA.private_key,
@@ -162,15 +167,16 @@ async function processRow(sheets, rowNum) {
     return { row: rowNum, ok: false, reason: 'title changed during generation' };
   }
 
-  console.log(`\nWriting image path back to row ${rowNum}, column ${colLetter(COL_E)}...`);
+  const { url: driveUrl } = await uploadFileToGoogleDrive(imagePath);
+  console.log(`\nWriting image URL back to row ${rowNum}, column ${colLetter(COL_E)}...`);
   await sheets.spreadsheets.values.update({
     spreadsheetId: SHEET_ID,
     range: `'${TAB}'!${colLetter(COL_E)}${rowNum}`,
     valueInputOption: 'USER_ENTERED',
-    requestBody: { values: [[imagePath]] },
+    requestBody: { values: [[driveUrl]] },
   });
 
-  return { row: rowNum, ok: true, title, imagePath };
+  return { row: rowNum, ok: true, title, imagePath, driveUrl };
 }
 
 async function main() {
@@ -183,6 +189,13 @@ async function main() {
 
   const explicitRow = args.row ? parseInt(args.row, 10) : null;
   const count = args.count ? parseInt(args.count, 10) : null;
+
+  if (args.check) {
+    const sheets = await getSheetsClient();
+    await sheets.spreadsheets.values.get({ spreadsheetId: SHEET_ID, range: `'${TAB}'!A1:E1` });
+    console.log('Single-image configuration OK: credentials resolved from repository root; sheet read succeeded. No images generated or sheet cells changed.');
+    return;
+  }
 
   if (!explicitRow && !count) {
     console.error('Usage: node scripts/run_single_image_test.js --row=N | --count=N | --row=N --count=N');
@@ -211,7 +224,7 @@ async function main() {
   console.log('SUMMARY');
   console.log('='.repeat(60));
   for (const r of results) {
-    console.log(r.ok ? `  Row ${r.row}: OK → ${r.imagePath}` : `  Row ${r.row}: FAILED (${r.reason})`);
+    console.log(r.ok ? `  Row ${r.row}: OK → ${r.driveUrl}` : `  Row ${r.row}: FAILED (${r.reason})`);
   }
 }
 

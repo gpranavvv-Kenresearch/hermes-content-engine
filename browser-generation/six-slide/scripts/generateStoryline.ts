@@ -33,8 +33,8 @@ const STOP_BUTTON_SELECTOR = 'button[data-testid="stop-button"], button[aria-lab
 // Without this fix every poll read 0 chars forever, so a fully-generated
 // reply was thrown away as "still writing"/empty.
 const ASSISTANT_MESSAGE_SELECTOR = '[data-message-author-role="assistant"], [data-markdown-text-style="assistant-message"]';
-const POLL_MS = 30 * 1000;
-const MAX_POLLS = 20; // 10 min hard cap
+const POLL_MS = 60 * 1000; // check once a minute
+const MAX_POLLS = 20; // 20 min hard cap
 
 const args = Object.fromEntries(
   process.argv.slice(2).map((a) => {
@@ -64,21 +64,23 @@ async function lastAssistantText(page: import('playwright').Page): Promise<strin
 }
 
 async function waitForCompletion(page: import('playwright').Page): Promise<string> {
+  // The Stop button alone is not reliable (ChatGPT can pause between chunks or
+  // hide it), so a reply only counts as finished when all 6 "Prompt N:" blocks
+  // are present AND the text has stopped growing. Failing that, a reply whose
+  // length has not changed for 3 consecutive checks is returned as-is so the
+  // extractor can report exactly what is missing.
+  const hasAllPrompts = (t: string) => [1, 2, 3, 4, 5, 6].every((n) => new RegExp(`Prompt\\s*${n}\\s*:`, 'i').test(t));
   let lastLength = -1;
   let unchangedChecks = 0;
   for (let poll = 1; poll <= MAX_POLLS; poll++) {
     await page.waitForTimeout(POLL_MS);
     const stopping = await page.locator(STOP_BUTTON_SELECTOR).first().isVisible({ timeout: 2000 }).catch(() => false);
     const text = await lastAssistantText(page);
-    console.log(`   …check ${poll}/${MAX_POLLS}: ${stopping ? 'still writing' : 'looks finished'} (${text.length} chars so far)`);
-    if (!stopping && text.length > 300) return text;
-    if (text.length > 300 && text.length === lastLength) {
-      unchangedChecks++;
-      if (unchangedChecks >= 3) return text;
-    } else {
-      unchangedChecks = 0;
-    }
+    unchangedChecks = text.length > 0 && text.length === lastLength ? unchangedChecks + 1 : 0;
     lastLength = text.length;
+    console.log(`   …check ${poll}/${MAX_POLLS}: ${stopping ? 'still writing' : 'idle'} (${text.length} chars, stable ${unchangedChecks})`);
+    if (!stopping && hasAllPrompts(text) && unchangedChecks >= 1) return text;
+    if (text.length > 300 && unchangedChecks >= 3) return text;
   }
   throw new Error('Timed out waiting for storyline response to finish.');
 }

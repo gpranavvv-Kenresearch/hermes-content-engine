@@ -59,41 +59,68 @@ async function scanForGeneratedImage(page: Page): Promise<{ src: string; natural
 // instead (confirmed live 2026-09-26). Match both.
 const ASSISTANT_MESSAGE_SELECTOR = '[data-message-author-role="assistant"], [data-markdown-text-style="assistant-message"]';
 
-async function lastAssistantText(page: Page): Promise<string> {
-  return page.evaluate((sel) => {
+async function assistantState(page: Page): Promise<{ count: number; text: string; generating: boolean }> {
+  const { count, text } = await page.evaluate((sel) => {
     const msgs = document.querySelectorAll(sel);
-    return msgs.length ? ((msgs[msgs.length - 1] as HTMLElement).innerText || '') : '';
-  }, ASSISTANT_MESSAGE_SELECTOR).catch(() => '');
+    return { count: msgs.length, text: msgs.length ? ((msgs[msgs.length - 1] as HTMLElement).innerText || '') : '' };
+  }, ASSISTANT_MESSAGE_SELECTOR).catch(() => ({ count: 0, text: '' }));
+  const generating = await page.locator('button[data-testid="stop-button"], button[aria-label*="Stop"]').first().isVisible({ timeout: 500 }).catch(() => false);
+  return { count, text, generating };
 }
 
-// ChatGPT sometimes misreads a fresh-chat slide request as an EDIT of some
-// other image it thinks is in context, and replies with plain text instead
-// of generating anything — asking to resend with "Generate from scratch" at
-// the top (confirmed live 2026-09-27, on a real slide prompt). Detect that
-// reply and resend automatically instead of burning the full 15-min image
-// wait on a request that was never going to produce an image.
-const EDIT_REJECTION_RE = /generate from scratch|did not accept the current generation attempt|treated the request as an edit/i;
+// ChatGPT sometimes finishes its turn with plain TEXT instead of an image:
+//  - misreads the slide as an edit and asks to resend "Generate from scratch"
+//    (confirmed live 2026-09-27),
+//  - "Image generation failed" / "tool error" (confirmed live 2026-10-22),
+//  - asks the user to upload a reference image from slides 1/2 before it will
+//    draw slide 3 (confirmed live 2026-10-23).
+// Rather than regex every possible wording, treat ANY finished text-only reply
+// (no Stop button, same text on two consecutive polls, no image on the page) as
+// a failed attempt and resend, instead of burning the full 15-min wait.
+const MAX_RESENDS = 2;
+const RESEND_PREFIX = 'Generate from scratch. There is NO reference image and none will be provided — do not ask for uploads or earlier slides. Follow the brief below exactly and generate the image now.';
+
+// ChatGPT sometimes shows "Which image do you like more?" with two candidates
+// and holds the result until one is picked or skipped. Skip it so the page
+// settles on one final image instead of swapping/revoking blob URLs.
+async function dismissImageComparison(page: Page): Promise<boolean> {
+  const skip = page.getByRole('button', { name: 'Skip', exact: true }).first();
+  if (await skip.isVisible({ timeout: 500 }).catch(() => false)) {
+    await skip.click().catch(() => {});
+    console.log('   Dismissed "Which image do you like more?" comparison (Skip)');
+    await page.waitForTimeout(2000);
+    return true;
+  }
+  return false;
+}
 
 async function findGeneratedImage(page: Page, prompt: string): Promise<{ src: string; naturalWidth: number; naturalHeight: number }> {
-  let retriedFromScratch = false;
+  let resends = 0;
+  let baselineCount = 0; // assistant messages present when the prompt was last sent
+  let prevText = '';
   for (let attempt = 1; attempt <= 15; attempt++) {
     console.log(`   Checking for image (${attempt}/15)...`);
     await page.waitForTimeout(60 * 1000);
+    await dismissImageComparison(page);
     const found = await scanForGeneratedImage(page);
     if (found?.src) {
       console.log(`   Image found: ${found.naturalWidth}x${found.naturalHeight}`);
       return found;
     }
 
-    if (!retriedFromScratch) {
-      const text = await lastAssistantText(page);
-      if (EDIT_REJECTION_RE.test(text)) {
-        retriedFromScratch = true;
-        console.log('   ⚠️ ChatGPT treated this as an edit — resending with "Generate from scratch" prefix...');
-        await pasteIntoChatGptComposer(page, `Generate from scratch\n\n${prompt}`);
-        await page.waitForTimeout(1000);
-        await clickSend(page);
-      }
+    const state = await assistantState(page);
+    const textOnlyReply = !state.generating && state.count > baselineCount && state.text.trim().length > 0 && state.text === prevText;
+    prevText = state.text;
+    if (textOnlyReply) {
+      if (resends >= MAX_RESENDS) throw new Error(`ChatGPT replied with text instead of an image after ${MAX_RESENDS} resends: ${state.text.slice(0, 200)}`);
+      resends++;
+      console.log(`   ⚠️ ChatGPT replied with text, no image (${JSON.stringify(state.text.slice(0, 120))}...) — resending (${resends}/${MAX_RESENDS})...`);
+      baselineCount = state.count;
+      await pasteIntoChatGptComposer(page, `${RESEND_PREFIX}
+
+${prompt}`);
+      await page.waitForTimeout(1000);
+      await clickSend(page);
     }
   }
   throw new Error('Generated image not found after 15 min timeout.');
@@ -168,11 +195,26 @@ async function generateOneSlide(page: Page, promptPath: string, outPath: string)
   console.log('   Stability wait (30s)...');
   await page.waitForTimeout(30 * 1000);
 
-  const finalImage = await scanForGeneratedImage(page);
-  const imgSrc = finalImage?.src || generated.src;
-
+  // Re-resolve after the stability wait (a comparison prompt may have swapped
+  // the candidates) and retry the download: blob URLs can be revoked between
+  // resolve and fetch.
   console.log('   Downloading...');
-  await downloadImage(page, imgSrc, outPath);
+  let lastErr: any;
+  let saved = false;
+  for (let attempt = 1; attempt <= 3 && !saved; attempt++) {
+    await dismissImageComparison(page);
+    const finalImage = await scanForGeneratedImage(page);
+    try {
+      await downloadImage(page, (finalImage ?? generated).src, outPath);
+      if (fs.statSync(outPath).size < 50 * 1024) throw new Error('Downloaded image too small');
+      saved = true;
+    } catch (err: any) {
+      lastErr = err;
+      console.warn(`   Download attempt ${attempt}/3 failed: ${err.message}`);
+      await page.waitForTimeout(5000);
+    }
+  }
+  if (!saved) throw new Error(`Could not download generated image: ${lastErr?.message}`);
 
   const stats = fs.statSync(outPath);
   console.log(`   Saved: ${outPath} (${(stats.size / 1024).toFixed(1)} KB)`);

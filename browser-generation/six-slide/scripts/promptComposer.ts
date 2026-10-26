@@ -73,18 +73,36 @@ export async function pasteIntoChatGptComposer(page: Page, text: string): Promis
   }
 }
 
+// Click Send and confirm ChatGPT took the prompt. The send button stays
+// disabled while a long paste/attachment is still processing, and clicking a
+// disabled button silently does nothing — wait for it to be enabled, then
+// verify Send was swapped for Stop/voice; if not, retry with Enter.
 export async function clickSend(page: Page): Promise<void> {
   const sendSelectors = [
     'button[data-testid="send-button"]',
     'button[aria-label="Send prompt"]',
     'button[aria-label*="Send"]',
   ];
-  for (const sel of sendSelectors) {
-    const btn = page.locator(sel).last();
-    if (await btn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await btn.click();
-      return;
+  const hasStop = () => page.locator('button[data-testid="stop-button"], button[aria-label*="Stop"]').first().isVisible({ timeout: 500 }).catch(() => false);
+  const sendVisible = () => page.locator(sendSelectors.join(', ')).first().isVisible({ timeout: 500 }).catch(() => false);
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    let clicked = false;
+    for (const sel of sendSelectors) {
+      const btn = page.locator(sel).last();
+      if (!(await btn.isVisible({ timeout: 3000 }).catch(() => false))) continue;
+      if (!(await btn.isEnabled({ timeout: 15000 }).catch(() => false))) continue;
+      await btn.click().catch(() => {});
+      clicked = true;
+      break;
     }
+    if (!clicked) {
+      await page.locator(COMPOSER_SELECTOR).first().click().catch(() => {});
+      await page.keyboard.press('Enter');
+    }
+    await page.waitForTimeout(2500);
+    if ((await hasStop()) || !(await sendVisible())) return;
+    console.log(`   [composer] Prompt not accepted after send (attempt ${attempt}/3) — retrying...`);
   }
-  await page.keyboard.press('Enter');
+  throw new Error('Prompt was pasted but ChatGPT never accepted the send after 3 attempts.');
 }

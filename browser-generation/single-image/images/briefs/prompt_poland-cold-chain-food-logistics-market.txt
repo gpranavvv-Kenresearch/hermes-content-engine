@@ -1,0 +1,56 @@
+Create a premium square market-intelligence infographic for Ken Research using only the inputs below. Do not rely on any reference images.
+
+Inputs:
+Report title: [Poland Cold Chain Food Logistics Market]
+Market name: Poland Cold Chain Food Logistics Market
+
+Task:
+Research the report URL and credible public internet sources to understand the market. Find or infer the most relevant business data available online, such as:
+- Current or latest market size
+- Forecast market size if available
+- CAGR
+- Key growth drivers
+- Largest region or leading country
+- Fastest-growing segment
+- Major demand trend or industry shift
+
+Use verified data where possible. If exact figures are not available, use the best publicly supported estimate and avoid inventing unsupported numbers.
+
+Create a square 1:1 infographic with this layout:
+
+Left side:
+- Small uppercase market/category label
+- Large punchy headline based on the strongest market insight
+- Short supporting paragraph explaining why the market is growing
+- One dominant hero statistic, such as market size, CAGR, revenue opportunity, or forecast value
+- 2-3 smaller insight blocks with icons, such as:
+  CAGR
+  Largest market region
+  Fastest-growing segment
+  Main demand driver
+
+Right side:
+- A realistic, premium image representing the market
+- Use product, infrastructure, consumer, technology, or industry visuals depending on the market
+- The image should feel specific to the market, not generic stock imagery
+- Blend the image softly into the background while keeping it visually dominant
+
+Bottom:
+- A bordered "KEY TAKEAWAY" box with one concise strategic implication
+- Add "KEN RESEARCH" branding at bottom-right
+
+Visual style:
+- Premium consulting-report look
+- Clean ivory/off-white background
+- Deep navy text
+- One refined accent color chosen to match the market
+- Elegant serif headline typography
+- Modern sans-serif body text
+- Thin divider lines
+- Minimal icons
+- High readability
+- Balanced whitespace
+- No clutter, no exaggerated claims, no tiny unreadable text
+
+Output:
+Generate the final infographic image directly. Ensure all numbers, labels, and headline text are spelled correctly and visually aligned.

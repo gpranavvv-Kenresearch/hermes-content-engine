@@ -12,7 +12,7 @@ const norm = (s: string) => (s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
 function client() {
   const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON
-    ?? fs.readFileSync(path.resolve('.accounts', 'google-service-account.json'), 'utf8');
+    || fs.readFileSync(path.resolve('.accounts', 'google-service-account.json'), 'utf8');
   const auth = new google.auth.GoogleAuth({
     credentials: JSON.parse(raw),
     scopes: ['https://www.googleapis.com/auth/spreadsheets'],

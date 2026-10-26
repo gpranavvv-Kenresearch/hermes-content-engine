@@ -148,7 +148,7 @@ describe('prompts carry angle, hook and style examples', () => {
     expect(p).toContain('Trust and verification as a product');
     expect(p).toContain('mainly from these source notes: [N4]');
     expect(p).not.toContain('## HOOK STYLE');
-    expect(p).toContain('short non-question lead');
+    expect(p).toContain('ONE question hook');
   });
 
   it('omits both sections when not given, so older callers are unchanged', async () => {

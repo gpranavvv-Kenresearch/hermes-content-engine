@@ -21,8 +21,9 @@ describe('post layouts', () => {
     expect(codes(narrative, layout)).toEqual([]);
     expect(codes(narrative.replace('Software and safety', '- Software and safety'), layout)).toContain('LIST_TOO_LONG');
   });
-  it('enforces one question after the link and a concise statement hook', () => {
-    expect(codes(narrative.replace('Hardware prices are changing how suppliers compete.', 'Why are hardware prices changing?'), 'short-narrative')).toContain('DISCUSSION_QUESTION_COUNT');
+  it('enforces one question after the link and a concise hook, which may itself be one question', () => {
+    expect(codes(narrative.replace('Hardware prices are changing how suppliers compete.', 'Why are hardware prices changing?'), 'short-narrative')).toEqual([]);
+    expect(codes(narrative.replace('Hardware prices are changing how suppliers compete.', 'Why are prices changing? Who gains?'), 'short-narrative')).toContain('DISCUSSION_QUESTION_COUNT');
     expect(codes(narrative.replace('Report:\nhttps://www.kenresearch.com/x\n\nWhich capability would you prioritize?', 'Which capability would you prioritize?\n\nReport:\nhttps://www.kenresearch.com/x'), 'short-narrative')).toContain('DISCUSSION_QUESTION_POSITION');
     expect(codes(narrative.replace('Hardware prices are changing how suppliers compete.', 'word '.repeat(26)), 'short-narrative')).toContain('HOOK_TOO_LONG');
   });

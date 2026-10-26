@@ -81,8 +81,8 @@ export function parseRunArgs(argv: string[]): RunArgs {
     writeSheet: flags.has('write-sheet'),
     supplementary: flags.has('background') ? 'all' : 'ken-gov',
     maxRegenerations: intIn('max-regenerations', values.get('max-regenerations'), 2, 0, 5),
-    maxRetries: intIn('max-retries', values.get('max-retries'), 3, 0, 6),
-    maxHermesCalls: intIn('max-calls', values.get('max-calls'), 20, 1, 100),
+    maxRetries: intIn('max-retries', values.get('max-retries'), 8, 0, 10),
+    maxHermesCalls: intIn('max-calls', values.get('max-calls'), 60, 1, 100),
     retrySkipped: flags.has('retry-skipped'),
   };
 }

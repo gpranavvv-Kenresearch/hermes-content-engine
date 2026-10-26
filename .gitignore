@@ -30,3 +30,6 @@ performance-engine/config/accounts.json
 .DS_Store
 Thumbs.db
 Untitled
+
+# generated debug pages
+browser-generation/**/images/error_*.html

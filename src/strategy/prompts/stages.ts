@@ -171,7 +171,7 @@ export function buildDraftPrompt(input: DraftInput): BuiltPrompt {
   const variantSection = [
     '## VARIATION AXES FOR THIS DRAFT',
     fixedLayout
-      ? 'Opener: the short non-question lead in the selected POST LAYOUT (statement, statistic or source quote).'
+      ? 'Opener: a short lead of at most 25 words in the selected POST LAYOUT: a statement, statistic, source quote, or ONE question hook. The single discussion question still goes after the report link.'
       : `Opener (${opener.id}): ${opener.instruction}`,
     fixedLayout ? 'Structure: follow the POST LAYOUT above exactly.' : `Structure (${structure.id}): ${structure.instruction}`,
     `Length class (${length.id}): aim for ${length.minChars} to ${length.maxChars} characters.`,

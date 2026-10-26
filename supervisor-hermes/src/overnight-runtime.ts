@@ -24,7 +24,7 @@ export async function generateOvernightPost(platform: SocialPlatform, pick: Shee
   const store = new JsonFileStore(path.resolve('output/store'));
   const runId = `run_${shortHash(`${platform}:${pick.url}:${Date.now()}`, 12)}`;
   const ledger = new Ledger(path.resolve('output/supervisor-hermes'), runId, event => console.log(`  ${formatTimeline([event])}`));
-  const limits = new RunLimits({ maxHermesCalls: 20, maxRetries: 3, maxRegenerations: 2 });
+  const limits = new RunLimits({ maxHermesCalls: 60, maxRetries: 8, maxRegenerations: 2 });
   const hermes = new HermesProvider({ maxCalls: 100, signal, lessons: await loadLessons(store, platform), recentTraces: await loadRecentRepairTraces(store, platform) });
   const searchProvider = loadKeysFromEnv('TAVILY_API_KEY').length ? new TavilySearchProvider() : undefined;
   const role = readFileSync(new URL('../roles/supervisor.md', import.meta.url), 'utf8');

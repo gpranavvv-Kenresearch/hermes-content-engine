@@ -85,7 +85,7 @@ export function buildRewritePrompt(input: RewritePromptInput): string {
     }
   }
   if (limit.targetMinChars !== null || limit.targetMaxChars !== null) {
-    caps.push(`Aim for ${limit.targetMinChars ?? 'any'} to ${limit.targetMaxChars ?? 'any'} characters.`);
+    caps.push(`LENGTH (strict): the final text must be between ${limit.targetMinChars ?? 'any'} and ${limit.targetMaxChars ?? 'any'} characters including spaces, link and hashtags. Count before replying; if over, cut the least important insight.`);
   }
   if (limit.hashtags.max > 0) caps.push(`Use ${limit.hashtags.min} to ${limit.hashtags.max} hashtags.`);
   if (limit.requireTitle) caps.push('The first line must be a title written as a markdown H1 ("# Title").');

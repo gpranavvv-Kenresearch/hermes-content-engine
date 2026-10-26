@@ -38,13 +38,17 @@ export function countRealHashtags(text: string): number {
 
 // --- length ------------------------------------------------------------------
 
+/** The target band is soft: up to this many characters over or under still passes. X keeps its exact hard 280 cap, enforced elsewhere. */
+export const TARGET_BAND_TOLERANCE = 20;
+
 export const checkTargetBand: Check = (text, ctx) => {
   const { targetMinChars: min, targetMaxChars: max } = ctx.limit;
   const length = payloadLength(text, ctx.limit);
-  if (min !== null && length < min) {
+  const tol = ctx.platform === 'x' ? 0 : TARGET_BAND_TOLERANCE;
+  if (min !== null && length < min - tol) {
     return [issue('BELOW_TARGET_BAND', 'review', `Length ${length} is below the target minimum ${min}.`, { length, min })];
   }
-  if (max !== null && length > max) {
+  if (max !== null && length > max + tol) {
     return [issue('ABOVE_TARGET_BAND', 'review', `Length ${length} is above the target maximum ${max}.`, { length, max })];
   }
   return [];

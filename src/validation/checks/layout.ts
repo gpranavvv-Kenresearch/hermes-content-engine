@@ -60,12 +60,14 @@ export function checkLayout(plain: string, ctx: CheckContext): ValidationIssue[]
     const body = lines.join('\n');
     const prose = lines.map((line) => HASHTAG_ONLY_RE.test(line) ? ' '.repeat(line.length) : line).join('\n')
       .replace(URL_TOKEN_RE, (url) => ' '.repeat(url.length));
-    const questions = prose.match(/\?/g)?.length ?? 0;
-    if (questions !== 1) issues.push(issue('DISCUSSION_QUESTION_COUNT', 'hard_fail', `Use exactly one discussion question after the report link; found ${questions}. Keep the selected hook free of questions.`));
+    // The opening hook may be one question; it does not count as the discussion question.
+    const hookQuestions = first ? Math.min(1, first.match(/\?/g)?.length ?? 0) : 0;
+    const questions = (prose.match(/\?/g)?.length ?? 0) - hookQuestions;
+    if (questions !== 1) issues.push(issue('DISCUSSION_QUESTION_COUNT', 'hard_fail', `Use exactly one discussion question after the report link (the opening hook may also be one question); found ${questions} besides the hook.`));
     if (first && first.split(/\s+/).length > 25) issues.push(issue('HOOK_TOO_LONG', 'hard_fail', 'Keep the first paragraph to at most 25 words; move market figures and context into the next paragraph.'));
     const link = body.match(/https?:\/\/[^\s<>]+/i);
     const linkEnd = link ? link.index! + link[0].length : -1;
-    if (questions === 1 && (linkEnd < 0 || prose.indexOf('?') < linkEnd)) issues.push(issue('DISCUSSION_QUESTION_POSITION', 'hard_fail', 'Place the single discussion question after the report link.'));
+    if (questions === 1 && (linkEnd < 0 || prose.lastIndexOf('?') < linkEnd)) issues.push(issue('DISCUSSION_QUESTION_POSITION', 'hard_fail', 'Place the single discussion question after the report link.'));
   }
   if (layout.hookIsQuestion && first !== undefined && !LIST_ITEM_RE.test(first) && !first.endsWith('?')) {
     issues.push(issue('HOOK_NOT_QUESTION', 'review', 'The first paragraph should be a hook written as a question.'));

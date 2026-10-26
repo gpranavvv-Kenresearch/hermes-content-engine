@@ -43,6 +43,13 @@
     "browser:single": "tsx browser-generation/src/cli.ts single",
     "browser:carousel": "tsx browser-generation/src/cli.ts carousel",
     "browser:blog": "tsx browser-generation/src/cli.ts blog",
+    "blog:run": "tsx browser-generation/blog-supervisor/src/cli.ts run",
+    "blog:final": "tsx browser-generation/blog-supervisor/src/cli.ts final",
+    "blog:sample": "tsx browser-generation/blog-supervisor/src/cli.ts sample",
+    "blog:check": "tsx browser-generation/blog-supervisor/src/cli.ts check",
+    "blog:status": "tsx browser-generation/blog-supervisor/src/cli.ts status",
+    "blog:unpark": "tsx browser-generation/blog-supervisor/src/cli.ts unpark",
+    "browser:blog-structures": "tsx browser-generation/src/tools/buildBlogStructures.ts",
     "browser:blog-loop": "tsx browser-generation/src/cli.ts blog-loop",
     "browser:typecheck": "tsc -p browser-generation/tsconfig.json --noEmit",
     "hermes:run": "tsx supervisor-hermes/src/cli.ts run",
@@ -70,7 +77,13 @@
     "performance:policy": "tsx performance-engine/src/cli.ts apply-policy",
     "performance:rollback": "tsx performance-engine/src/cli.ts rollback-policy",
     "performance:run": "tsx performance-engine/src/cli.ts run",
-    "performance:status": "tsx performance-engine/src/cli.ts status"
+    "performance:status": "tsx performance-engine/src/cli.ts status",
+    "hermes:continuous": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-continuous-text.ps1",
+    "hermes:continuous-status": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-continuous-text.ps1 -Status",
+    "hermes:blog-continuous": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-continuous-blog.ps1",
+    "hermes:blog-continuous-status": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-continuous-blog.ps1 -Status",
+    "hermes:blog-continuous-install": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/register-continuous-blog.ps1",
+    "hermes:continuous-install": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/register-continuous-text.ps1"
   },
   "dependencies": {
     "@mozilla/readability": "^0.6.0",

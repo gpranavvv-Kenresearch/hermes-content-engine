@@ -17,6 +17,8 @@ export interface EvidenceOutput {
   mode: EvidenceMode;
   verifiedFigures: number;
   sources: string[];
+  /** The URL the report actually resolved to after Ken Research redirects; the post links to this. */
+  finalUrl?: string;
   error?: string;
 }
 
@@ -25,12 +27,11 @@ export function usableFacts(evidence: Pick<EvidenceOutput, 'facts'>): Fact[] {
   return selectBriefFacts(evidence.facts);
 }
 
-/** Last path segment, lower case, no trailing slash. A report keeps its slug when only the prefix or host form changes. */
-function slugOf(url: string): string {
+function isSiteRoot(url: string): boolean {
   try {
-    return new URL(url).pathname.replace(/\/+$/, '').split('/').pop()?.toLowerCase() ?? '';
+    return new URL(url).pathname.replace(/\/+$/, '') === '';
   } catch {
-    return '';
+    return false;
   }
 }
 
@@ -43,6 +44,7 @@ export async function runEvidenceAgent(
   let notes: SourceNote[] = [];
   const sources: string[] = [input.url];
   const concerns: string[] = [];
+  let finalUrl: string | undefined;
 
   // A report that did not load can never anchor a post: do not look for substitute evidence.
   const notLoaded = (message: string): AgentReport<EvidenceOutput> => ({
@@ -53,8 +55,15 @@ export async function runEvidenceAgent(
   });
   try {
     const got = await gatherEvidence({ url: input.url, config: deps.config, ...(deps.fetcher ? { fetcher: deps.fetcher } : {}), now: deps.now });
-    if (slugOf(got.source.finalUrl) !== slugOf(input.url)) {
-      return notLoaded(`the URL redirected to a different page (${got.source.finalUrl}), so it is not this report`);
+    // Ken Research redirects some report URLs on purpose; follow them and use the final URL.
+    // Only a redirect to a site root (no report page at all) counts as not loaded.
+    if (isSiteRoot(got.source.finalUrl)) {
+      return notLoaded(`the URL redirected to a different page (${got.source.finalUrl}), which is not a report page`);
+    }
+    if (got.source.finalUrl && got.source.finalUrl !== input.url) {
+      finalUrl = got.source.finalUrl;
+      sources.push(finalUrl);
+      concerns.push(`the report URL redirected to ${finalUrl}; evidence and the post link use the redirected URL`);
     }
     facts = got.factSet.facts;
     notes = got.factSet.notes;
@@ -86,7 +95,7 @@ export async function runEvidenceAgent(
   const mode: EvidenceMode = verifiedFigures > 0 ? 'figures' : notes.length >= MIN_NOTES_FOR_QUALITATIVE ? 'qualitative' : 'none';
   return {
     agent: 'evidence',
-    output: { itemId, reportPageLoaded: true, facts, notes, mode, verifiedFigures, sources },
+    output: { itemId, reportPageLoaded: true, facts, notes, mode, verifiedFigures, sources, ...(finalUrl ? { finalUrl } : {}) },
     summary: `Report page loaded. ${verifiedFigures} verified figure(s) from 2024 or later, ${notes.length} source note(s). Mode: ${mode}.`,
     concerns,
   };

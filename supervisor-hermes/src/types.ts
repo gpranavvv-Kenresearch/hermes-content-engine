@@ -6,12 +6,17 @@ export type Gate = (typeof GATES)[number];
 export const ACTIONS = ['proceed', 'retry', 'regenerate', 'stop'] as const;
 export type Action = (typeof ACTIONS)[number];
 
+// The model sometimes writes a slightly over-long explanation. That is not a
+// reason to fail the gate closed and skip a post, so over-long free text is
+// trimmed to the limit; the action and gate stay strictly validated.
+const clip = (max: number) => z.string().transform((v) => (v.length > max ? v.slice(0, max - 1) + '…' : v));
+
 export const DecisionSchema = z.object({
   gate: z.enum(GATES),
   action: z.enum(ACTIONS),
-  reason: z.string().min(1).max(600),
-  instructions: z.string().max(1500).optional(),
-  concerns: z.array(z.string().max(300)).max(8).default([]),
+  reason: clip(600).pipe(z.string().min(1)),
+  instructions: clip(1500).optional(),
+  concerns: z.array(clip(300)).transform((a) => a.slice(0, 8)).default([]),
 });
 export type Decision = z.infer<typeof DecisionSchema>;
 

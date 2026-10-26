@@ -9,8 +9,8 @@ describe('parseRunArgs', () => {
       writeSheet: false,
       supplementary: 'ken-gov',
       maxRegenerations: 2,
-      maxRetries: 3,
-      maxHermesCalls: 20,
+      maxRetries: 8,
+      maxHermesCalls: 60,
     });
   });
   it('accepts --write-sheet, --keyword and --background', () => {

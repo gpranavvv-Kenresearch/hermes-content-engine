@@ -50,10 +50,16 @@ describe('evidence agent: a report URL that redirects to another page', () => {
   const URL_OK = 'https://www.kenresearch.com/report/examplestan-widget-market';
   const redirectTo = (finalUrl: string): Fetcher => async (url) => ({ requestedUrl: url, finalUrl, status: 200, html });
 
-  it('is treated as not loaded when it ends on a different page (for example the homepage)', async () => {
+  it('is treated as not loaded when it ends on the homepage', async () => {
     const report = await runEvidenceAgent({ url: URL_OK, title: 'Examplestan Widget Market', supplementary: 'ken-gov' }, deps(undefined, redirectTo('https://www.kenresearch.com/')));
     expect(report.output.reportPageLoaded).toBe(false);
     expect(report.output.error).toContain('different page');
+  });
+  it('follows a redirect to another report page and uses the redirected URL', async () => {
+    const final = 'https://www.kenresearch.com/industry-reports/other-widget-market';
+    const report = await runEvidenceAgent({ url: URL_OK, title: 'Examplestan Widget Market', supplementary: 'ken-gov' }, deps(undefined, redirectTo(final)));
+    expect(report.output.reportPageLoaded).toBe(true);
+    expect(report.output.finalUrl).toBe(final);
   });
   it('still loads when only the path prefix or trailing slash changes', async () => {
     const report = await runEvidenceAgent(

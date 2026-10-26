@@ -175,7 +175,7 @@ export async function processRow(job: RowJob, ctx: RowContext): Promise<RowResul
       return await finish('needs_human', `evidence gate: ${d1.reason}`);
     }
 
-    const item = { id: ev.itemId, title: pick.title, reportUrl: pick.url };
+    const item = { id: ev.itemId, title: pick.title, reportUrl: ev.finalUrl ?? pick.url };
     let attempt = 0;
     let validatorReport: AgentReport<ValidatorOutput> | undefined;
     let houseFormat = '';

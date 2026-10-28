@@ -1,5 +1,7 @@
 # Hermes Content Engine
 
+**Video:** [Project explainer on Loom](https://www.loom.com/share/3e15469137eb4f52a3fe35f751b93a1f)
+
 Standalone TypeScript workspace for Ken Research Facebook and LinkedIn text. It reuses the proven evidence extraction, claim checks, style rules, bounded rewrite loop and Google Sheet adapter from the existing posting project, then adds a Hermes writing route, primary-keyword and depth gates, cross-run repair traces, and reviewed writing methods. It does not contain social posting code.
 
 For a fresh machine, begin with the [complete setup and operating guide](docs/SETUP.md). The root [requirements.txt](requirements.txt) is the concise environment and dependency checklist; this remains a TypeScript project installed with `npm ci`, not `pip`.

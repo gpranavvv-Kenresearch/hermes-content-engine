@@ -17,6 +17,14 @@ RESEARCH AND EVIDENCE
 - If published third-party estimates for the same market differ from the report by more than about 2x, say so in one sentence and give the likely reason (scope, definition, base year or currency) using only what the sources show. Do not declare which estimate is right unless a stated definition proves it. Do not name competing research firms and do not link to them: write "another published estimate" and keep every link on Ken Research or government pages.
 - Look at real search language first (autocomplete, People Also Ask, related searches) so headings match how buyers and AI assistants phrase questions.
 
+NON-NEGOTIABLE RULES (identical in every article format; the ARTICLE FORMAT below may change the shape, never these)
+- The H1 contains the market name with its geography and the bold brand: <strong>Ken Research</strong>, written naturally inside the headline. Exactly one H1.
+- The SEO Title is plain text, puts the market name near the start, differs from the H1 and does not contain "Ken Research".
+- Link plan, exactly 9 links: 1 Ken Research homepage + 4 adjacent Ken Research reports + 1 Primary Report + 3 government sources.
+- Homepage link: first paragraph under the H1, on the first mention of Ken Research, once only. Adjacent report #1: second paragraph under the H1. Adjacent #2 to #4: three different H2 sections. Primary Report: the final call-to-action paragraph only. Government links: three different H2 sections, never in the introduction.
+- At most one link per paragraph or list item, no links in headings, never links in two consecutive paragraphs or list items (the two intro paragraphs are the only exception), and the paragraph before the final call-to-action carries no link.
+- Every visible "Ken Research" is bold. Every meaningful number is bold. No em dashes. No tables.
+
 KEN RESEARCH BRAND AND FORMATTING (mandatory)
 - Every visible "Ken Research" is bold: <strong>Ken Research</strong>. This includes headings, link text and possessives (<strong>Ken Research</strong>'s).
 - Every meaningful number is bold: figures, years, percentages, currency values, counts and units, for example <strong>USD 8.7 billion</strong>, <strong>2031</strong>, <strong>9.8%</strong>. Numbers inside the SEO Title, Meta Description and the snapshot lines stay plain text.
@@ -26,9 +34,9 @@ KEN RESEARCH BRAND AND FORMATTING (mandatory)
 
 INTERLINKING (mandatory; links go ONLY to Ken Research and to government sources)
 - 1 Ken Research homepage link on the first mention of Ken Research in the first paragraph under the H1: <a href="https://www.kenresearch.com/"><strong>Ken Research</strong></a>.
-- 4 adjacent Ken Research report links (3 if fewer than 4 genuinely relevant ones exist). They must be real report pages on kenresearch.com that you have actually opened and that are closely related to this market (same country, adjacent sector, supply chain or buyers). Never guess or construct a URL. Put them in different sections, with natural descriptive anchors and varied sentence patterns. Never say an adjacent report "confirms" or "proves" this report's estimate.
+- 4 adjacent Ken Research report links. They must be real report pages on kenresearch.com that you have actually opened and that are closely related to this market (same country, adjacent sector, supply chain or buyers). Never guess or construct a URL. Put them in different sections, with natural descriptive anchors and varied sentence patterns. Never say an adjacent report "confirms" or "proves" this report's estimate.
 - 1 Primary Report link, in the final call-to-action paragraph only (the Primary Report URL above).
-- 3 external links (2 if no third verified source exists), GOVERNMENT sources only: ministry, regulator, statistics office, central bank, customs or tax authority, official portal. No associations, companies, news sites or research firms. Real pages you have opened. Anchor on the institution or regulation name.
+- 3 external links, GOVERNMENT sources only: ministry, regulator, statistics office, central bank, customs or tax authority, official portal. No associations, companies, news sites or research firms. Real pages you have opened. Anchor on the institution or regulation name.
 - At most one link per paragraph or list item. A paragraph never carries two links, not even two government links: if two sources support one paragraph, keep one link or split the paragraph. No links inside headings. Only Ken Research links in the opening paragraphs. Avoid links in consecutive paragraphs.
 - Do not add UTM parameters or rel attributes, and do not add any Google "preferred source" link or call-to-action about preferred sources: code adds those later.
 - Do not output any link list, link map or source map.
@@ -90,14 +98,14 @@ Primary Search Intent
 (one line: the main query this article answers)
 
 Key Snapshot Metrics for Image
-(5 to 7 lines in the form "Label: Value", plain text, one metric per line. Base labels: Base Market Value, Forecast Value, CAGR, Market Volume / Units, Leading Segment, Fastest-Growing Segment, Dominant Geography, Major Driver, Major Constraint. A chart generator parses the value formats literally, so use exactly these:
+(8 to 11 lines in the form "Label: Value", plain text, one metric per line. Base labels: Base Market Value, Forecast Value, CAGR, Market Volume / Units, Leading Segment, Fastest-Growing Segment, Dominant Geography, Major Driver, Major Constraint. A chart generator parses the value formats literally, so use exactly these:
  Trend metric: two or three points joined by " → ", each ending "in {year}", for example Completed Orders: 3.8 million in 2025 → 8.5 million in 2031
  Share metric: the label contains the word Share and the value ends in a percentage, for example Fresh-Food Share: 41.0% in 2025
  Segment Breakdown: Segment Breakdown: Cloud 45%, On-Premise 30%, Hybrid 25% (3 to 5 segments summing close to 100%)
  Gauge metric: the label contains CAGR, Growth, Adoption, Penetration, Utilization or Conversion, and the value is a percentage, for example CAGR: 15.1%
  Key Players: Key Players: Acme Corp, Northwind Traders, Globex Inc
  Market Share: Market Share: Acme Corp 34%, Northwind Traders 22%, Globex Inc 15%
- Include Segment Breakdown, Key Players and Market Share only when the report actually publishes that data. Omit any metric the report does not support. Never fabricate.)
+ Share data is the most valuable part of the cards, so look for it before writing these lines: search the whole Primary Report page (summary, segmentation, competitive landscape and regional sections, tables and lists) for percentage shares by segment, by provider and by region. If the page publishes them, Segment Breakdown, Market Share and the Regional Landscape line MUST carry the exact "Name X%" values, never names alone. If the page publishes no percentage for a segment list, leave the Segment Breakdown line out entirely instead of listing names. Never estimate a share. Fill the card as completely as the Primary Report page allows: read the whole page and include every supported metric from the base labels, a trend line for market volume or units, a Share line, a Segment Breakdown, Key Players and Market Share whenever the page publishes them. Aim for 8 to 11 lines, never fewer than 7 unless the page really has less. Include Segment Breakdown, Key Players and Market Share only when the report actually publishes that data. Omit any metric the report does not support. Never fabricate.)
 
 Key Qualitative Insights for Image 2
 (up to three lines, each optional, omitted when the report does not support it: "Growth Drivers: " followed by 3 or 4 short phrases separated by semicolons, most important first; "Competitive Landscape: " followed by "Name X%" items separated by commas; "Regional Landscape: " followed by "Region X%" items separated by commas. Do not repeat base value, forecast or CAGR here. The charts need figures: whenever the Primary Report page publishes shares for providers or regions, copy them exactly as "Name X%". Give provider names alone only when the page publishes no shares, and never estimate a share.)
@@ -105,4 +113,4 @@ Key Qualitative Insights for Image 2
 FINAL ARTICLE
 (ONE complete, clean HTML article that follows the ARTICLE FORMAT above. It starts with the h1. No code fences. No link map, source map or any table or list describing links.)
 
-Before you answer, silently check: every Ken Research is bold; every meaningful number is bold; the link plan holds (1 homepage, 3 to 4 adjacent Ken Research reports, 1 Primary Report only in the final paragraph, 2 to 3 government sources, at most one link per paragraph or item, so no paragraph holds two links; no link in a heading); all external links are government pages you opened; every date, launch, regulation and company event is verified on the report page or an official page, otherwise removed; no em dash, no table; exactly two image placeholders in the places the format allows; the length is inside the format's band; no unsupported figure.
+Before you answer, silently check: every Ken Research is bold; every meaningful number is bold; the link plan holds (1 homepage, 4 adjacent Ken Research reports, 1 Primary Report only in the final paragraph, 3 government sources, at most one link per paragraph or item, so no paragraph holds two links; no link in a heading); all external links are government pages you opened; every date, launch, regulation and company event is verified on the report page or an official page, otherwise removed; no em dash, no table; exactly two image placeholders in the places the format allows; the length is inside the format's band; no unsupported figure.

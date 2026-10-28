@@ -1,263 +1,56 @@
-Create a premium square market-intelligence infographic for **Ken Research** using the inputs below. Do not rely on any reference images.
+Create a premium square market-intelligence infographic for Ken Research using only the inputs below. Do not rely on any reference images.
 
-## INPUTS
+Inputs:
+Report title: [Brazil Quick Commerce Market]
+Market name: Brazil Quick Commerce Market
 
-**Report Title:** Brazil Quick Commerce Market
-**Market Name:** Brazil Quick Commerce Market
-
-## RESEARCH TASK
-
-Research the report URL and credible public internet sources to understand the market named in the inputs. Identify the most relevant and commercially meaningful business data available online, such as:
-
+Task:
+Research the report URL and credible public internet sources to understand the market. Find or infer the most relevant business data available online, such as:
 - Current or latest market size
-- Forecast market size, if available
+- Forecast market size if available
 - CAGR
 - Key growth drivers
-- Largest region or leading market
+- Largest region or leading country
 - Fastest-growing segment
 - Major demand trend or industry shift
-- Important infrastructure, trade, technology, regulatory, or industry developments
 
-Use verified data wherever possible. If exact figures are unavailable, use the strongest publicly supported estimate and clearly avoid unsupported or fabricated numbers.
-
-Prioritize **recent, credible, and commercially relevant data** over generic industry information.
-
----
-
-# DESIGN FORMAT
-
-Create a **premium 1:1 square market-intelligence infographic** suitable for:
-
-- LinkedIn
-- Executive presentations
-- Investor research
-- Strategy consulting
-- Market intelligence reports
-- Ken Research publications
-
-The composition should feel like a **high-end consulting / investment research visual**, not a generic stock infographic.
-
----
-
-# LEFT SIDE — MARKET INTELLIGENCE
-
-Include:
-
-### 1. Market Category Label
-
-A small uppercase label with the market name (for example, the Market Name above in uppercase).
-
-Use subtle typography with strong spacing.
-
-### 2. Main Headline
-
-Create a **short, punchy, insight-led headline** based on the strongest finding from the research.
-
-The headline should communicate a meaningful market development rather than simply repeating the report title.
-
-Write it in the style of a short, insight-led statement about the market's strongest evidence-based development. Generate the strongest evidence-based headline.
-
-### 3. Dominant Hero Statistic
-
-Feature **one major statistic** as the visual centerpiece of the left section.
-
-Possible choices:
-
-- Current market size
-- Forecast market size
-- CAGR
-- Revenue opportunity
-- Market growth
-- Volume opportunity
-
-Display the number in large, premium typography with a concise supporting label.
-
-Example structure:
-
-**$XX BN**\
-*Projected Market Size*
-
-Only use figures supported by credible research.
-
-### 4. Supporting Insight Blocks
-
-Include **2–3 compact insight blocks** with minimal, elegant icons.
-
-Choose the most relevant insights from:
-
-- CAGR
-- Largest region
-- Fastest-growing segment
-- Main demand driver
-- Major product, service, or segment
-- Infrastructure expansion
-- Technology adoption
-- Regulatory or policy shift
-- Industry modernization
-
-Do not force irrelevant categories into the design. Select only the strongest insights supported by the research.
-
-### Important
-
-**Do NOT include a supporting paragraph explaining why the market is growing.**
-
-The left side should remain concise, visual, and data-driven.
-
----
-
-# RIGHT SIDE — HERO MARKET VISUAL
-
-Create a **realistic, premium visual representation of the market named in the inputs**.
-
-Use imagery that is specifically relevant to the market, such as products, infrastructure, facilities, technology, consumers, or industry settings that clearly belong to this market.
-
-Choose the visual based on the **strongest market insight discovered during research**.
-
-The image must:
-
-- Feel specifically connected to this market and its geography
-- Look realistic and commercially credible
-- Avoid generic stock-photo aesthetics
-- Have premium cinematic lighting
-- Have strong depth and visual hierarchy
-- Blend naturally into the overall composition
-- Remain visually dominant without overwhelming the data
-- Integrate smoothly with the background and typography
-
-Where appropriate, subtly incorporate recognizable local or regional context relevant to the market named in the inputs.
-
----
-
-# COLOR & ART DIRECTION
-
-Do **not** force a predefined background color.
-
-### Color system should be intelligently selected based on the market.
-
-Choose the background, accent, typography, and image treatment according to:
-
-- The market named in the inputs
-- The dominant industry story
-- The hero imagery
-- Data readability
-- Premium consulting aesthetics
-- Overall visual balance
-
-The background can be:
-
-- Light
-- Dark
-- Neutral
-- Warm
-- Cool
-- Tinted
-- Gradient-based
-
-Use **whatever color direction produces the strongest premium market-intelligence composition**.
-
-Do not follow a fixed color template across markets.
-
-Select **one refined primary accent color** and supporting tones that complement the chosen background and the hero imagery.
-
-Avoid overly saturated colors and avoid literal national-flag color schemes.
-
-The color palette should feel:
-
-**Premium + sophisticated + analytical + modern + market-specific.**
-
-Ensure excellent contrast and readability across all statistics and text.
-
----
-
-# TYPOGRAPHY
-
-Use:
-
-- Elegant premium serif typography for the main headline
-- Modern clean sans-serif typography for supporting information
-- Large, highly legible numerical typography for the hero statistic
-- Clear hierarchy between headline, statistics, labels, and takeaway
-- Generous letter spacing for small uppercase labels
-- Strong alignment and consistent spacing
-
-Typography should resemble a **top-tier strategy consulting / investment research publication**.
-
----
-
-# BOTTOM SECTION
-
-Create a clearly defined bordered box labeled:
-
-**KEY TAKEAWAY**
-
-Inside it, provide **one concise strategic implication** based on the research.
-
-The takeaway should answer:
-
-**“What does this market development mean strategically?”**
-
-Keep it short and powerful.
-
-At the bottom-right, include:
-
-**KEN RESEARCH**
-
-Use clean, understated corporate branding.
-
----
-
-# DATA & CONTENT RULES
-
-- Use credible public sources
-- Prefer recent information
-- Do not invent statistics
-- Do not fabricate CAGR figures
-- Do not fabricate market rankings
-- Do not fabricate regional leadership
-- Do not fabricate segment growth
-- Avoid unsupported claims
-- If an exact figure is unavailable, use the best publicly supported estimate
-- Keep numbers and labels concise
-- Prioritize the strongest commercial insights
-- Do not overcrowd the infographic with data
-- Ensure every number and word is spelled correctly
-
----
-
-# COMPOSITION
-
-The final composition should have:
-
-**LEFT = DATA + INSIGHT**
-
-**RIGHT = MARKET VISUAL**
-
-**BOTTOM = STRATEGIC TAKEAWAY**
-
-Maintain generous negative space and strong visual balance.
-
-The infographic should immediately communicate:
-
-**What the market is → how large it is → what is driving it → where the opportunity is → why it matters strategically.**
-
-Avoid:
-
-- Generic stock infographic layouts
-- Excessive icons
-- Excessive text
-- Tiny statistics
-- Decorative clutter
-- Unnecessary charts
-- Unsupported claims
-- Overly patriotic or flag-based visuals
-- Cheap or overly colorful aesthetics
-
----
-
-# FINAL OUTPUT
-
-Generate the **final premium square infographic image directly at 1:1 aspect ratio**.
-
-The finished design must look like a **high-end Ken Research market-intelligence graphic created for senior executives, investors, strategy teams, and industry decision-makers**.
-
-Ensure all numbers, labels, headline text, and branding are **spelled correctly, clearly readable, professionally aligned, and visually integrated into the composition**.
+Use verified data where possible. If exact figures are not available, use the best publicly supported estimate and avoid inventing unsupported numbers.
+
+Create a square 1:1 infographic with this layout:
+
+Left side:
+- Small uppercase market/category label
+- Large punchy headline based on the strongest market insight
+- Short supporting paragraph explaining why the market is growing
+- One dominant hero statistic, such as market size, CAGR, revenue opportunity, or forecast value
+- 2-3 smaller insight blocks with icons, such as:
+  CAGR
+  Largest market region
+  Fastest-growing segment
+  Main demand driver
+
+Right side:
+- A realistic, premium image representing the market
+- Use product, infrastructure, consumer, technology, or industry visuals depending on the market
+- The image should feel specific to the market, not generic stock imagery
+- Blend the image softly into the background while keeping it visually dominant
+
+Bottom:
+- A bordered "KEY TAKEAWAY" box with one concise strategic implication
+- Add "KEN RESEARCH" branding at bottom-right
+
+Visual style:
+- Premium consulting-report look
+- Clean ivory/off-white background
+- Deep navy text
+- One refined accent color chosen to match the market
+- Elegant serif headline typography
+- Modern sans-serif body text
+- Thin divider lines
+- Minimal icons
+- High readability
+- Balanced whitespace
+- No clutter, no exaggerated claims, no tiny unreadable text
+
+Output:
+Generate the final infographic image directly. Ensure all numbers, labels, and headline text are spelled correctly and visually aligned.

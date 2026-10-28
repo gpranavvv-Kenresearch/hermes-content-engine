@@ -103,7 +103,7 @@ describe('processBlogRow', () => {
 
   it('writes the article against the redirected URL', async () => {
     const final = 'https://www.kenresearch.com/industry-reports/brazil-seeds-and-genetics-market';
-    const t = setup({ evidence: [proceed], draft: [proceed], final: [proceed] }, { evidence: { ...good, finalUrl: final, redirected: true } });
+    const t = setup({ evidence: [proceed], draft: [proceed], final: [proceed] }, { evidence: { ...good, finalUrl: final, redirected: true }, blogs: [{ ...makeBlog(), html: makeBlog().html.split(REPORT_URL).join(final) }] });
     await processBlogRow(row, t.deps);
     expect(t.chats[0]!.params.url).toBe(final);
   });

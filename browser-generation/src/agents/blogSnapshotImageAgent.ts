@@ -216,9 +216,10 @@ export function withAlpha(hex: string, alpha: number): string {
   return `rgba(${parseInt(m[1]!, 16)},${parseInt(m[2]!, 16)},${parseInt(m[3]!, 16)},${alpha.toFixed(2)})`;
 }
 
-function buildTrendBubbleWidget(title: string, points: TrendPoint[], color: string): string {
+function buildTrendBubbleWidget(title: string, points: TrendPoint[], color: string, big = false): string {
   const n = points.length;
-  const minPx = n >= 3 ? 56 : 66, maxPx = n >= 3 ? 96 : 112;
+  // A trend that has a whole row to itself gets larger bubbles instead of floating in empty space.
+  const minPx = big ? (n >= 3 ? 80 : 92) : n >= 3 ? 56 : 66, maxPx = big ? (n >= 3 ? 120 : 128) : n >= 3 ? 96 : 112;
   const items = points.map((p, i) => {
     const size = minPx + (p.pct / 100) * (maxPx - minPx);
     const opacity = n === 1 ? 1 : 0.35 + (i / (n - 1)) * 0.65;
@@ -227,7 +228,7 @@ function buildTrendBubbleWidget(title: string, points: TrendPoint[], color: stri
     // Fade only the FILL, never the text: opacity on the whole bubble made the earliest point's number nearly invisible.
     return `
       <div class="trend-bubble-item">
-        <div class="trend-bubble" style="width:${size}px;height:${size}px;background:${withAlpha(color, opacity)};color:${textColor};">
+        <div class="trend-bubble${big ? ' trend-bubble-big' : ''}" style="width:${size}px;height:${size}px;background:${withAlpha(color, opacity)};color:${textColor};">
           <div class="trend-bubble-main">${escapeHtml(main)}</div>
           ${unit ? `<div class="trend-bubble-unit">${escapeHtml(unit)}</div>` : ''}
         </div>
@@ -235,10 +236,22 @@ function buildTrendBubbleWidget(title: string, points: TrendPoint[], color: stri
       </div>`;
   });
   const withArrows = items.reduce<string[]>((acc, cur, i) => i === 0 ? [cur] : [...acc, '<span class="trend-arrow">&#8594;</span>', cur], []).join('');
+  const first = firstNumber(points[0]!.value), last = firstNumber(points[n - 1]!.value);
+  const ratio = first && last && first > 0 ? last / first : null;
+  const y0 = Number(points[0]!.year.replace(/\D/g, '')), y1 = Number(points[n - 1]!.year.replace(/\D/g, ''));
+  const unit = compactTrendValue(points[n - 1]!.value).unit;
+  const fmt = (v: number) => (Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(1)).replace(/\.0$/, '');
+  const delta = big && first && last && ratio && ratio > 1.02 && y0 > 1900 && y1 > y0
+    ? `<div class="trend-stats">
+        <div class="trend-stat"><div class="trend-stat-v">+${fmt(last - first)}${unit ? ' ' + escapeHtml(unit) : ''}</div><div class="trend-stat-l">Absolute increase</div></div>
+        <div class="trend-stat"><div class="trend-stat-v">${ratio.toFixed(1)}x</div><div class="trend-stat-l">Growth multiple, ${y0} to ${y1}</div></div>
+        <div class="trend-stat"><div class="trend-stat-v">${((Math.pow(ratio, 1 / (y1 - y0)) - 1) * 100).toFixed(1)}%</div><div class="trend-stat-l">Implied annual growth</div></div>
+      </div>` : '';
   return `
-      <div class="widget" style="--accent:${color};${n >= 3 ? 'grid-column: 1 / -1;' : ''}">
+      <div class="widget" style="--accent:${color};${n >= 3 || big ? 'grid-column: 1 / -1;' : ''}">
         <div class="chart-title">${escapeHtml(title)}</div>
         <div class="trend-bubble-row"${n >= 3 ? ' style="flex-wrap:nowrap;"' : ''}>${withArrows}</div>
+        ${delta}
       </div>`;
 }
 
@@ -396,7 +409,9 @@ export function buildSnapshotHtml(marketName: string, metrics: SnapshotMetric[])
   // One bubble-comparison tile per trend metric — each sits in its own
   // half-width grid cell instead of being stacked into one shared list.
   trends.forEach((t, i) => {
-    widgets.push(buildTrendBubbleWidget(t.label, t.points, CHART_COLORS[i % CHART_COLORS.length]));
+    const total = widgets.length + (trends.length - i) + (marketShareMetric ? 1 : 0);
+    const alone = total === 1 || (i === trends.length - 1 && !marketShareMetric && total % 2 === 1);
+    widgets.push(buildTrendBubbleWidget(t.label, t.points, CHART_COLORS[i % CHART_COLORS.length], alone));
   });
 
   if (marketShareMetric) {
@@ -588,6 +603,10 @@ export function buildSnapshotHtml(marketName: string, metrics: SnapshotMetric[])
   .trend-bubble-unit { font-size: 8px; font-weight: 700; opacity: 0.85; margin-top: 1px; }
   .trend-bubble-year { font-size: 10px; color: ${INK_SECONDARY}; font-weight: 700; }
   .trend-arrow { color: #c3ccdb; font-size: 16px; }
+  .trend-stats { display: flex; gap: 8px; margin-top: 10px; }
+  .trend-stat { flex: 1; background: #fff; border: 1px solid #e3e9f3; border-radius: 10px; padding: 7px 6px; text-align: center; }
+  .trend-stat-v { font-size: 14px; font-weight: 900; color: #1f7a4d; }
+  .trend-stat-l { font-size: 9px; font-weight: 700; color: #64748b; margin-top: 2px; }
 
   /* Key Players — neutral chips (not color-coded; a company name isn't a data value) */
   .players-card { background: #f7f8fc; border-radius: 14px; margin: 0 16px; padding: 8px 16px; }
@@ -643,6 +662,13 @@ export function buildSnapshotHtml(marketName: string, metrics: SnapshotMetric[])
   .trend-bubble-unit { font-size: 12px; }
   .trend-bubble-year { font-size: 14px; }
   .trend-arrow { font-size: 24px; }
+  .trend-stats { gap: 12px; margin-top: 16px; }
+  .trend-stat { padding: 12px 10px; }
+  .trend-stat-v { font-size: 24px; }
+  .trend-stat-l { font-size: 13px; }
+  .trend-bubble-row { gap: 22px; }
+  .trend-bubble-big .trend-bubble-main { font-size: 22px; }
+  .trend-bubble-big .trend-bubble-unit { font-size: 14px; }
   .players-card { padding: 12px 18px; }
   .player-chip { font-size: 14px; padding: 6px 14px; }
   .player-dot { width: 7px; height: 7px; }

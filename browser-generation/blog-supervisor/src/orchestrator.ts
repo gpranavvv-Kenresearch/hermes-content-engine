@@ -1,7 +1,7 @@
 import { chooseStructure, DEFAULT_STRUCTURE, describeStructure, idsInFamily } from '../../src/agents/blogStructures.js';
 import type { BlogChatSession, BlogGenResult } from '../../src/agents/blogGenAgent.js';
 import { enforceBlogGate, type BlogGateFacts } from './gates.js';
-import { formatMeasurements, measureBlog, structuralHardFails } from './measure.js';
+import { formatMeasurements, measureBlog, structuralHardFails, v13RuleFails } from './measure.js';
 import type { BlogEvidence } from './evidence.js';
 import type { BlogSupervisor, BlogLimits } from './supervisor.js';
 import type { BlogLedger, BlogStateStore } from './state.js';
@@ -155,7 +155,7 @@ export async function processBlogRow(row: BlogRowInput, deps: BlogRowDeps): Prom
       blog = await session.generate();
       for (;;) {
         const m = measureBlog({ html: blog.html, seoTitle: blog.seoTitle, metaDescription: blog.description, primaryUrl: ev.finalUrl, evidenceText: ev.evidenceText });
-        const hard = structuralHardFails(m);
+        const hard = [...structuralHardFails(m), ...(limits.revisionsLeft > 0 ? v13RuleFails(m) : [])];
         await ledger.append('draft', { summary: `${m.words} words, ${m.headings.h2} H2, ${m.links.total} links`, hardFails: hard });
         const material = [
           `EVIDENCE\n${ev.summary}`,

@@ -123,8 +123,8 @@ function recordUse(id: string): void {
 /**
  * Pools for the automatic modes:
  *   rotate / random                 the 8 V1.3-based architectures (unchanged behaviour)
- *   rotate-formats / random-formats the 8 standalone formats
- *   rotate-all / random-all         all 16
+ *   rotate-formats / random-formats the 11 standalone formats
+ *   rotate-all / random-all         all 19
  */
 function poolFor(wanted: string): { ids: string[]; random: boolean } | null {
   const m = /^(rotate|random)(?:-(formats|all))?$/.exec(wanted);

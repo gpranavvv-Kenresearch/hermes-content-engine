@@ -13,7 +13,7 @@ const hero = findHeroMetrics(metrics);
 describe('snapshot image', () => {
   it('fades only the fill of the earliest trend bubble, never its text', () => {
     const html = buildSnapshotHtml('South Africa BNPL', metrics);
-    const bubble = /<div class="trend-bubble" style="([^"]*)"/.exec(html)![1]!;
+    const bubble = /<div class="trend-bubble[^"]*" style="([^"]*)"/.exec(html)![1]!;
     expect(bubble).toContain('rgba(');
     expect(bubble).not.toMatch(/(^|;)\s*opacity:/);
   });

@@ -34,9 +34,9 @@ export function makeArticle(o: ArticleOptions = {}): string {
   const h2s = [
     ['How Big Is Brazil Seed Market and How Fast Is It Growing?', para('a', `Brazil's seed market reached <strong>USD 8.7 billion</strong> in <strong>2025</strong> and is forecast to reach <strong>USD 12.1 billion</strong> by <strong>2031</strong>.`), para('b')],
     ['What Is Driving Seed Demand Across the Soybean Belt?', para('c', `<a href="https://www.kenresearch.com/industry-reports/brazil-agriculture-market"><strong>Ken Research</strong> agriculture analysis</a> points to <strong>4.8%</strong> growth.`), para('d')],
-    ['Which Seed Segments Are Growers Shifting Toward?', para('e'), para('f', `Official data from <a href="${gov1}">IBGE</a> shows planted area rising.`) + (o.placeholder ? '<img src="YOUR_IMAGE_URL_HERE_2" alt="x">' : '')],
+    ['Which Seed Segments Are Growers Shifting Toward?', para('e', 'See the <a href="https://www.kenresearch.com/industry-reports/brazil-soybean-market">soybean market</a>.'), para('f', `Official data from <a href="${gov1}">IBGE</a> shows planted area rising.`) + (o.placeholder ? '<img src="YOUR_IMAGE_URL_HERE_2" alt="x">' : '')],
     ['Seed Concentration: Four Firms Hold Most Hybrid Corn Sales', para('g'), para('h', `See the <a href="https://www.kenresearch.com/industry-reports/brazil-fertilizer-market">fertilizer market</a> for inputs context.`)],
-    ['What Regulatory Risks Could Slow Brazil Seed Market Growth?', para('i'), `<blockquote><p><strong>Plan for cultivar registration before you plan for price.</strong> <a href="${PREFERRED}">Add ${ken} as a preferred source</a></p></blockquote>`],
+    ['What Regulatory Risks Could Slow Brazil Seed Market Growth?', para('i', 'Central bank data from <a href="https://www.bcb.gov.br/en">Banco Central do Brasil</a> covers rural credit.'), `<blockquote><p><strong>Plan for cultivar registration before you plan for price.</strong> <a href="${PREFERRED}">Add ${ken} as a preferred source</a></p></blockquote>`],
     ['Where Brazil Seed Market Goes Next: A Decision Window to 2031', para('j', `Official guidance from <a href="https://www.gov.br/agricultura/en">MAPA</a> frames the rules.`), `<p>${o.noPrimaryLink ? 'Read more about the market.' : `Explore the full <a href="${REPORT_URL}">Brazil Seed Market report</a> from ${ken}.`} ${filler(40, 'z')}.</p>`],
   ].slice(0, o.h2 ?? 6);
 
@@ -51,7 +51,7 @@ export function makeArticle(o: ArticleOptions = {}): string {
     o.emDash ? '<p>A claim — with a dash.</p>' : '',
     o.unboldedNumber ? '<p>Roughly 42 growers noted it.</p>' : '',
   ].join('');
-  return `<h1>Brazil Seed Market Outlook</h1>\n${intro}\n${body}\n${extra}`;
+  return `<h1>Brazil Seed Market Outlook: ${ken} Maps the Path to 2031</h1>\n${intro}\n${body}\n${extra}`;
 }
 
 export function makeBlog(o: ArticleOptions = {}): BlogGenResult {

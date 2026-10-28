@@ -44,6 +44,7 @@
     "browser:carousel": "tsx browser-generation/src/cli.ts carousel",
     "browser:blog": "tsx browser-generation/src/cli.ts blog",
     "blog:run": "tsx browser-generation/blog-supervisor/src/cli.ts run",
+    "blog:live": "tsx browser-generation/blog-supervisor/src/cli.ts run --loop --with-image --structure=random-all",
     "blog:final": "tsx browser-generation/blog-supervisor/src/cli.ts final",
     "blog:sample": "tsx browser-generation/blog-supervisor/src/cli.ts sample",
     "blog:check": "tsx browser-generation/blog-supervisor/src/cli.ts check",

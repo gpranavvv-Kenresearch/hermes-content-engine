@@ -51,6 +51,7 @@ export interface BlogMeasurements {
   metaDescription: { length: number } | null;
   /** Bold numbers in the article that do not appear anywhere in the report evidence (government-sourced ones can be legitimate). */
   figuresNotInEvidence: string[];
+  h1HasBoldKenResearch: boolean;
 }
 
 const ENTITIES: Record<string, string> = { '&nbsp;': ' ', '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&ndash;': '–', '&mdash;': '—' };
@@ -290,6 +291,7 @@ export function measureBlog(input: {
       primaryOnlyInFinalParagraph: primaryOnlyFinal,
       list: links,
     },
+    h1HasBoldKenResearch: /<h1[^>]*>[\s\S]*?<strong>\s*Ken Research\s*<\/strong>[\s\S]*?<\/h1>/i.test(html),
     seoTitle: seoTitle === undefined ? null : { length: seoTitle.length, equalsH1: !!h1Text && h1Text.toLowerCase() === seoTitle.toLowerCase(), containsKenResearch: /ken research/i.test(seoTitle) },
     metaDescription: input.metaDescription === undefined ? null : { length: input.metaDescription.trim().length },
     figuresNotInEvidence,
@@ -305,6 +307,21 @@ export function structuralHardFails(m: BlogMeasurements): string[] {
   if (m.words > 2600) fails.push(`${m.words} words (far beyond the 1,800-word hard limit)`);
   if (m.unresolvedBraces > 0) fails.push('unfilled {{ }} template placeholders remain');
   if (m.tables > 0) fails.push(`${m.tables} table(s); the prompt forbids tables`);
+  return fails;
+}
+
+/** V1.3 non-negotiables. Sent back for a fix while fix requests remain; never blocks the article once they are used up. */
+export function v13RuleFails(m: BlogMeasurements): string[] {
+  const fails: string[] = [];
+  if (!m.h1HasBoldKenResearch) fails.push('the H1 must contain <strong>Ken Research</strong>');
+  if (m.kenResearch.unbolded > 0) fails.push(`${m.kenResearch.unbolded} "Ken Research" mention(s) are not bold`);
+  if (m.seoTitle?.containsKenResearch) fails.push('the SEO Title must not contain "Ken Research"');
+  if (m.links.kenHomepage !== 1) fails.push(`${m.links.kenHomepage} Ken Research homepage links (needs exactly 1, in the first paragraph)`);
+  if (m.links.kenAdjacent !== 4) fails.push(`${m.links.kenAdjacent} adjacent Ken Research report links (needs exactly 4)`);
+  if (m.links.kenPrimary !== 1) fails.push(`${m.links.kenPrimary} Primary Report links (needs exactly 1, in the final call-to-action)`);
+  // Whether a host is a government source is judged by the supervisor: regulators and central banks often sit on .co.za, .org.za, .org and similar hosts.
+  if (m.links.government + m.links.otherExternal !== 3) fails.push(`${m.links.government + m.links.otherExternal} external links (needs exactly 3, all government sources)`);
+  if (m.links.inHeadings > 0) fails.push('links inside headings');
   return fails;
 }
 

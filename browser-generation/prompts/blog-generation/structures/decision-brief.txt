@@ -860,7 +860,7 @@ Use exactly these tags — a bare img with only src and alt, nothing else (no <f
 
 <img src="YOUR_IMAGE_URL_HERE_2" alt="[DESCRIPTIVE ALT]">
 
-Choose approximately 5–7 supported metrics for the base set below, PLUS any of the optional multi-value fields (Segment Breakdown, Key Players, Market Share) whenever the report actually publishes that data — these feed a downstream chart generator that renders each metric as a real chart (donut, gauge, bar comparison), so the EXACT field name and value format below must be followed. Never fabricate a metric or a value to fit a format — omit the field entirely if the report does not support it.
+Share data is the most valuable part of the cards, so look for it before writing these lines: search the whole Primary Report page (summary, segmentation, competitive landscape and regional sections, tables and lists) for percentage shares by segment, by provider and by region. If the page publishes them, Segment Breakdown, Market Share and the Regional Landscape line MUST carry the exact "Name X%" values, never names alone. If the page publishes no percentage for a segment list, leave the Segment Breakdown line out entirely instead of listing names. Never estimate a share. Choose 8 to 11 supported metrics (never fewer than 7 unless the report really has less) for the base set below, PLUS any of the optional multi-value fields (Segment Breakdown, Key Players, Market Share) whenever the report actually publishes that data — these feed a downstream chart generator that renders each metric as a real chart (donut, gauge, bar comparison), so the EXACT field name and value format below must be followed. Never fabricate a metric or a value to fit a format — omit the field entirely if the report does not support it.
 
 Base set — plain "Label: Value" line, one metric per line:
 
@@ -2182,7 +2182,7 @@ Primary Search Intent
 
 Key Snapshot Metrics for Image
 
-5–7 supported metrics, using the exact "Label: Value" formats mandated above (trend "→" chains, Share/Segment Breakdown/CAGR-Growth-Adoption percentages, Key Players, Market Share) — never a freeform format
+8 to 11 supported metrics, using the exact "Label: Value" formats mandated above (trend "→" chains, Share/Segment Breakdown/CAGR-Growth-Adoption percentages, Key Players, Market Share) — never a freeform format
 
 Key Qualitative Insights for Image 2
 

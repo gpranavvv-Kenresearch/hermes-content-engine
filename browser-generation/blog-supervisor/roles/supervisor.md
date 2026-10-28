@@ -24,9 +24,9 @@ If every MUST rule passes, the action is proceed, even if you would have written
 2. Bold. Every visible "Ken Research" is bold. Meaningful numbers, years, percentages and currency values are bold. A few stray unbolded numbers (ranges, ordinals, list numbers) are tolerable; a pattern is not.
 3. Link plan (all interlinking goes only to Ken Research and government sites):
    - one Ken Research homepage branding link in the first paragraph under the H1;
-   - 3 to 4 adjacent Ken Research report links (4 is the target; 3 passes), the first near the start, the others in different sections;
+   - exactly 4 adjacent Ken Research report links (Adjacent #1 in the second paragraph under the H1, the others in different sections);
    - exactly one primary report link, in the final CTA paragraph only;
-   - 2 to 3 external links (3 is the target; 2 passes), and EVERY external link must be a government source (ministry, regulator, statistics office, central bank, customs or tax authority, official portal). An industry body, company, news site or research firm is a violation. "Government-looking" in the measurements is only a host guess: judge each host yourself;
+   - exactly 3 external links, and EVERY external link must be a government source (ministry, regulator, statistics office, central bank, customs or tax authority, official portal). An industry body, company, news site or research firm is a violation. "Government-looking" in the measurements is only a host guess: judge each host yourself;
    - no link inside a heading; no non-Ken link in the introduction; at most one link per paragraph or bullet;
    - THE ONE EXCEPTION: the single Google preferred-source link (https://www.google.com/preferences/source?q=...) inside the article's one blockquote is allowed and sits outside the link plan. It is not a government link and not an external-link violation. Never flag it, never ask for it to be removed, and do not count it in the 2 to 3 external links.
    When you ask for more links, say that every added URL must be a real page the writer has actually opened and verified. Never accept a guessed URL, and never demand a link that cannot be verified: if no verified government source exists for a claim, soften the claim instead.

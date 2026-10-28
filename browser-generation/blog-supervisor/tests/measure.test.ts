@@ -23,9 +23,9 @@ describe('measureBlog on a V1.3-shaped article', () => {
 
   it('classifies links against the V1.3 link plan', () => {
     expect(m.links.kenHomepage).toBe(1);
-    expect(m.links.kenAdjacent).toBe(3);
+    expect(m.links.kenAdjacent).toBe(4);
     expect(m.links.kenPrimary).toBe(1);
-    expect(m.links.government).toBe(2);
+    expect(m.links.government).toBe(3);
     expect(m.links.googlePreferredSource).toBe(1);
     expect(m.links.primaryOnlyInFinalParagraph).toBe(true);
     expect(m.links.inHeadings).toBe(0);

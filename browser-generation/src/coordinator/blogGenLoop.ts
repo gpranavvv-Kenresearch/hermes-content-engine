@@ -60,6 +60,27 @@ export function injectCoverImage(html: string, imageUrl: string): string {
 }
 
 /**
+ * Keep body images out of the H1 and the introduction: any <img> before the first <h2> is moved to just after the first
+ * paragraph of the first H2, so the images start appearing from the first H2. Run on the raw model HTML, before the cover
+ * image is prepended (the cover stays above the H1 on purpose). No <h2> means nothing is moved.
+ */
+export function moveImagesBelowFirstH2(html: string): string {
+  const h2 = html.search(/<h2[\s>]/i);
+  if (h2 < 0) return html;
+  const intro = html.slice(0, h2);
+  const imgs = intro.match(/<img\b[^>]*>/gi);
+  if (!imgs) return html;
+  const cleanedIntro = intro.replace(/<img\b[^>]*>[ \t]*\r?\n?/gi, '');
+  const rest = html.slice(h2);
+  const h2End = rest.search(/<\/h2>/i);
+  if (h2End < 0) return html;
+  const afterHeading = h2End + '</h2>'.length;
+  const para = rest.slice(afterHeading).search(/<\/p>/i);
+  const at = para < 0 ? afterHeading : afterHeading + para + '</p>'.length;
+  return `${cleanedIntro}${rest.slice(0, at)}\n${imgs.join('\n')}${rest.slice(at)}`;
+}
+
+/**
  * Same pattern as injectCoverImage — replace the V1.3 prompt's mid-article
  * <img src="YOUR_IMAGE_URL_HERE"> placeholder with the real, generated-and-
  * uploaded snapshot chart URL. The negative lookahead keeps this from also
@@ -236,7 +257,7 @@ export async function runBlogGenBatch(opts: BlogGenBatchOptions = {}): Promise<{
           blog = await generateBlogViaChatGpt({ title, url: row.targetUrl, accountHandle: opts.blogAccountHandle });
         }
 
-        let htmlWithImage = blog.html;
+        let htmlWithImage = moveImagesBelowFirstH2(blog.html);
 
         // Mid-article snapshot chart (donut/gauge/bar widgets built from
         // blog.imageData — see blogSnapshotImageAgent.ts) replacing the

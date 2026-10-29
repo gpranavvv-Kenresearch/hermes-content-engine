@@ -10,7 +10,7 @@ import { generateAndUploadLandscapeImage } from '../../src/agents/blogLandscapeI
 import { normalizeImgTags } from '../../src/agents/blogSanityAgent.js';
 import { applyPreferredSourceCTA, validatePreferredSourceCTA } from '../../src/agents/blogPreferredSourceAgent.js';
 import {
-  injectCoverImage, injectSnapshotImage, injectSnapshotImage2, stripUnresolvedImagePlaceholders, verifyWrite, PREFERRED_SOURCE_MODE,
+  injectCoverImage, moveImagesBelowFirstH2, injectSnapshotImage, injectSnapshotImage2, stripUnresolvedImagePlaceholders, verifyWrite, PREFERRED_SOURCE_MODE,
 } from '../../src/coordinator/blogGenLoop.js';
 import { saveCoverImageUrlToPool, saveGeneratedBlogToPool, saveNewLogicImageText } from '../../src/sheets/sheets.js';
 import { gatherBlogEvidence } from './evidence.js';
@@ -31,7 +31,7 @@ export function createRealDeps(opts: RealDepsOptions): Pick<BlogRowDeps, 'eviden
   const log = (summary: string) => opts.ledger.append('assemble', { summary }).catch(() => {});
 
   const finishArticle = async ({ blog, title, coverImageUrl }: FinishArticleParams): Promise<string> => {
-    let html = blog.html;
+    let html = moveImagesBelowFirstH2(blog.html);
     // Same order as blogGenLoop.ts: snapshot and landscape placeholders first, cover image last (it prepends).
     let snapshotMetrics: SnapshotMetric[] = [];
     if (blog.imageData) {

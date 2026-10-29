@@ -20,7 +20,7 @@ import { applyPreferredSourceCTA, validatePreferredSourceCTA } from '../../src/a
 import { normalizeImgTags } from '../../src/agents/blogSanityAgent.js';
 import { buildSnapshotHtml, findHeroMetrics, parseSnapshotMetrics } from '../../src/agents/blogSnapshotImageAgent.js';
 import { describeStructure, STRUCTURE_CATALOG } from '../../src/agents/blogStructures.js';
-import { injectCoverImage, injectSnapshotImage, injectSnapshotImage2, PREFERRED_SOURCE_MODE } from '../../src/coordinator/blogGenLoop.js';
+import { injectCoverImage, moveImagesBelowFirstH2, injectSnapshotImage, injectSnapshotImage2, PREFERRED_SOURCE_MODE } from '../../src/coordinator/blogGenLoop.js';
 import { gatherBlogEvidence } from './evidence.js';
 import { formatMeasurements, measureBlog } from './measure.js';
 import { processBlogRow, type BlogRowDeps } from './orchestrator.js';
@@ -72,14 +72,14 @@ export async function renderLocalImages(
   let snapshot = false;
   let landscapeDrawn = false;
   if (metrics.length > 0) {
-    await renderPng(buildSnapshotHtml(marketName, metrics), { width: 900, height: 2600 }, path.join(imgDir, 'snapshot.png'));
+    await renderPng(buildSnapshotHtml(marketName, metrics), { width: 1200, height: 2600 }, path.join(imgDir, 'snapshot.png'));
     snapshot = true;
     await note(`snapshot image rendered (${metrics.length} metrics)`);
   } else await note('no snapshot metrics returned, so no snapshot image');
   const hero = findHeroMetrics(metrics);
   const landscape = parseLandscapeData(blog.imageData2);
   if ((hero.base && hero.forecast) || landscape.drivers.length || landscape.competitive.length || landscape.regions.length) {
-    await renderPng(buildLandscapeHtml(marketName, hero, landscape), { width: 900, height: 1400 }, path.join(imgDir, 'landscape.png'));
+    await renderPng(buildLandscapeHtml(marketName, hero, landscape), { width: 1200, height: 1400 }, path.join(imgDir, 'landscape.png'));
     landscapeDrawn = true;
     await note(`landscape image rendered (drivers ${landscape.drivers.length}, competitive ${landscape.competitive.length}, competitor names ${landscape.competitiveNames?.length ?? 0}, regions ${landscape.regions.length})`);
   } else await note('no landscape data returned, so no second image');
@@ -121,7 +121,7 @@ export async function rerenderImages(folderArg: string): Promise<string> {
 }
 
 export async function assembleLocal(blog: BlogGenResult, title: string, coverImagePath: string, imgDir: string, note: (summary: string) => unknown = () => {}): Promise<string> {
-  let html = blog.html;
+  let html = moveImagesBelowFirstH2(blog.html);
   const drawn = await renderLocalImages(blog, title, imgDir, note);
   if (drawn.snapshot) html = injectSnapshotImage(html, 'images/snapshot.png');
   if (drawn.landscape) html = injectSnapshotImage2(html, 'images/landscape.png');

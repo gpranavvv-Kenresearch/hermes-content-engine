@@ -15,6 +15,11 @@
  * than asking the LLM to repeat them — the LLM only needs to supply the new
  * qualitative content (drivers, competitive shares, regional shares).
  *
+ * LOCKED DESIGN (approved 2026-10-29). Wide horizontal card, 1132px, about 1.67:1: Forecast Growth + Key Players orbit on top,
+ * Growth Drivers + Regional Heat Map + Key Takeaways below. Nothing the data supplies may be left out: every driver, player,
+ * region (plus "Other regions"), stat chip and takeaway must be drawn. Do not change the layout, sizes or sections without the
+ * user's approval; tests/images.test.ts ("landscape image is locked") guards it.
+ *
  * Same visual language as blogSnapshotImageAgent.ts (CHART_COLORS, ink
  * tokens, Playwright HTML->PNG render, Google Drive upload) — locked design
  * confirmed live in this session (bubble-demo.png).
@@ -27,7 +32,7 @@ import os from 'os';
 import { uploadFileToGoogleDrive } from '../utils/googleDriveUpload.js';
 import {
   SnapshotMetric, NamedShare, findHeroMetrics, splitTrailingYear,
-  parseNamePercentList, escapeHtml, CHART_COLORS, STATUS_GOOD, INK_PRIMARY, INK_SECONDARY,
+  parseNamePercentList, escapeHtml, CHART_COLORS, STATUS_GOOD, INK_PRIMARY, INK_SECONDARY, playerOrbit,
 } from './blogSnapshotImageAgent.js';
 
 export interface LandscapeData {
@@ -111,7 +116,7 @@ function bubbleComparisonSvg(baseLabel: string, baseValue: string, forecastLabel
       <text x="${cx}" y="${cy - (unit ? 3 : -4)}" text-anchor="middle" font-family="'Plus Jakarta Sans', Arial, sans-serif" font-size="${mainSize}" font-weight="900" fill="${color}">${escapeHtml(main)}</text>
       ${unit ? `<text x="${cx}" y="${cy + unitSize + 3}" text-anchor="middle" font-family="'Plus Jakarta Sans', Arial, sans-serif" font-size="${unitSize}" font-weight="700" fill="${color}" opacity="0.85">${escapeHtml(unit)}</text>` : ''}`;
   return `
-    <svg viewBox="0 0 ${w} ${h}" style="width:100%;max-width:520px;height:auto;display:block;margin:0 auto;">
+    <svg viewBox="0 0 ${w} ${h}" style="width:100%;max-width:400px;height:auto;display:block;margin:0 auto;">
       <circle cx="${cx1}" cy="${cy}" r="${rBase}" fill="#8aa6cf" opacity="0.85"/>
       <circle cx="${cx2}" cy="${cy}" r="${rForecast}" fill="${CHART_COLORS[0]}"/>
       ${bubbleText(cx1, base.main, base.unit, 11, 9, '#1e3a5f')}
@@ -128,54 +133,53 @@ function bubbleComparisonSvg(baseLabel: string, baseValue: string, forecastLabel
 }
 
 /**
- * Competitive Landscape as a packed BUBBLE chart — circle AREA proportional
- * to share % (radius = k * sqrt(pct)), one distinct color per company
- * (identity), name+% labeled per bubble. No bar/pie/donut.
+ * Growth driver strength as a RING BADGE: three concentric rings, one more filled per impact step. Level reflects the
+ * LLM's own list order (most-cited drivers first), never an invented score.
  */
-function competitiveBubbles(items: NamedShare[]): string {
-  const sorted = [...items].sort((a, b) => b.pct - a.pct);
-  const maxPct = Math.max(...sorted.map((i) => i.pct), 0.0001);
-  const k = 36 / Math.sqrt(maxPct);
-  return `<div class="bubble-row">${sorted.map((s, i) => {
-    // Radius is strictly proportional to sqrt(share), so bubble AREA is the share. The percentage sits below the bubble, never inside it, so a small share never clips its own label.
-    const r = Math.max(10, Math.round(k * Math.sqrt(s.pct)));
-    return `
-    <div class="bubble-col">
-      <div class="bubble" style="width:${r * 2}px;height:${r * 2}px;background:${CHART_COLORS[i % CHART_COLORS.length]};"></div>
-      <div class="bubble-pct-out" style="color:${CHART_COLORS[i % CHART_COLORS.length]};">${s.pct}%</div>
-      <div class="bubble-name">${escapeHtml(s.name)}</div>
-    </div>`;
-  }).join('')}</div>`;
+function ringBadge(level: number, color: string): string {
+  const rings = [13, 9, 5];
+  return `<svg class="ring" viewBox="0 0 30 30" width="30" height="30">${rings.map((r, i) =>
+    `<circle cx="15" cy="15" r="${r}" fill="none" stroke="${i < level ? color : '#dbe2ee'}" stroke-width="3"/>`).join('')}</svg>`;
 }
 
-/** 3-dot impact meter — filled dots = relative emphasis. Level reflects the LLM's own list order (most-cited drivers first), never an invented score. */
-function impactMeter(level: number, color: string): string {
-  return `<span class="impact-meter">${[1, 2, 3].map((i) =>
-    `<span class="impact-dot" style="background:${i <= level ? color : '#dbe2ee'};"></span>`).join('')}</span>`;
-}
-
-function driverListWithImpact(items: string[], color: string): string {
+function driverCards(items: string[], color: string): string {
   const half = Math.ceil(items.length / 2);
-  return items.map((t, i) => `
-    <div class="driver-row">
-      <span class="driver-dot" style="background:${color};"></span>
-      <span class="driver-text">${escapeHtml(t)}</span>
-      ${impactMeter(i < half ? 3 : 2, color)}
-    </div>`).join('');
-}
-
-/** Regional Heat Map — a tile grid where fill opacity (same hue) is proportional to share, the standard heat-map convention, without needing real country-border SVG data. */
-function heatMapGrid(items: NamedShare[]): string {
-  const max = Math.max(...items.map((i) => i.pct), 0.0001);
-  return `<div class="heatmap-grid">${items.map((r) => {
-    const intensity = 0.18 + (r.pct / max) * 0.72;
-    const textColor = intensity > 0.55 ? '#ffffff' : INK_PRIMARY;
+  return `<div class="driver-stack">${items.map((t, i) => {
+    const level = i < half ? 3 : 2;
     return `
-    <div class="heat-tile" style="background: rgba(47,95,163,${intensity.toFixed(2)}); color:${textColor};">
-      <div class="heat-pct">${r.pct}%</div>
-      <div class="heat-name">${escapeHtml(r.name)}</div>
+    <div class="driver-card">
+      ${ringBadge(level, color)}
+      <span class="driver-text">${escapeHtml(t)}</span>
+      <span class="driver-pill" style="color:${color};">${level === 3 ? 'High' : 'Medium'}</span>
     </div>`;
   }).join('')}</div>`;
+}
+
+interface MosaicTile { name: string; pct: number; other?: boolean }
+
+/** Regions plus whatever share is left over ("Other regions"), as a TREEMAP-style mosaic: block area is the share, same-hue intensity follows the share. */
+function regionTiles(items: NamedShare[]): MosaicTile[] {
+  const sorted = [...items].sort((a, b) => b.pct - a.pct);
+  const sum = sorted.reduce((s, i) => s + i.pct, 0);
+  const rest = sum < 99.5 ? Math.round((100 - sum) * 10) / 10 : 0;
+  return rest > 0 ? [...sorted, { name: 'Other regions', pct: rest, other: true }] : sorted;
+}
+
+function regionMosaic(items: NamedShare[]): string {
+  const tiles = regionTiles(items);
+  const max = Math.max(...tiles.filter((t) => !t.other).map((t) => t.pct), 0.0001);
+  const style = (t: MosaicTile) => {
+    if (t.other) return `background: repeating-linear-gradient(135deg,#e6ebf4,#e6ebf4 6px,#eef1f8 6px,#eef1f8 12px); color:${INK_SECONDARY};`;
+    const intensity = 0.2 + (t.pct / max) * 0.7;
+    return `background: rgba(47,95,163,${intensity.toFixed(2)}); color:${intensity > 0.55 ? '#ffffff' : INK_PRIMARY};`;
+  };
+  const [first, ...others] = tiles;
+  const total = tiles.reduce((s, t) => s + t.pct, 0);
+  const big = `<div class="mosaic-tile mosaic-big" style="flex:${(first!.pct / total).toFixed(4)};${style(first!)}"><div class="mosaic-pct">${first!.pct}%</div><div class="mosaic-name">${escapeHtml(first!.name)}</div></div>`;
+  const othersSum = others.reduce((s, t) => s + t.pct, 0);
+  const col = others.length ? `<div class="mosaic-col" style="flex:${(othersSum / total).toFixed(4)};">${others.map((t) =>
+    `<div class="mosaic-tile mosaic-small" style="flex:${(t.pct / othersSum).toFixed(4)};${style(t)}"><span class="mosaic-pct-s">${t.pct}%</span><span class="mosaic-name-s">${escapeHtml(t.name)}</span></div>`).join('')}</div>` : '';
+  return `<div class="mosaic">${big}${col}</div>`;
 }
 
 function statChipRow(items: { label: string; value: string; color: string }[]): string {
@@ -196,6 +200,39 @@ function incrementalGrowth(base: SnapshotMetric, forecast: SnapshotMetric): stri
   const suffixMatch = splitTrailingYear(forecast).value.match(/(million|billion|thousand|trillion)\b/i);
   const suffix = suffixMatch ? ` ${suffixMatch[1]}` : '';
   return `${unit}${(forecastNum - baseNum).toFixed(1)}${suffix}`;
+}
+
+/** Forecast value divided by base value, e.g. "1.75x". Null when either is missing or the base is not positive. */
+function growthMultiple(base: SnapshotMetric, forecast: SnapshotMetric): string | null {
+  const b = firstNumber(splitTrailingYear(base).value), f = firstNumber(splitTrailingYear(forecast).value);
+  if (b === null || f === null || b <= 0) return null;
+  return `${(f / b).toFixed(2)}x`;
+}
+
+/** Plain-language takeaways written only from the data this image already shows; a line is dropped when its data is missing. */
+function takeawayItems(
+  base: SnapshotMetric | undefined, forecast: SnapshotMetric | undefined, data: LandscapeData,
+): string[] {
+  const b = (s: string) => `<b>${escapeHtml(s)}</b>`;
+  const out: string[] = [];
+  if (base && forecast) {
+    const bs = splitTrailingYear(base), fs = splitTrailingYear(forecast), mult = growthMultiple(base, forecast);
+    out.push(`The market ${mult ? `grows ${b(mult)} ` : 'moves '}from ${b(bs.value)}${bs.year ? ` in ${escapeHtml(bs.year)}` : ''} to ${b(fs.value)}${fs.year ? ` in ${escapeHtml(fs.year)}` : ''}.`);
+  }
+  if (data.drivers.length) out.push(`${b(data.drivers[0]!)} is the leading growth driver.`);
+  const tiles = regionTiles(data.regions).filter((t) => !t.other);
+  if (tiles.length >= 2) {
+    const sum = Math.round((tiles[0]!.pct + tiles[1]!.pct) * 10) / 10;
+    out.push(`${b(tiles[0]!.name)} and ${b(tiles[1]!.name)} together hold ${b(`${sum}%`)} of the regional share.`);
+  } else if (tiles.length === 1) out.push(`${b(tiles[0]!.name)} holds ${b(`${tiles[0]!.pct}%`)} of the regional share.`);
+  if (data.competitive.length) {
+    const top = [...data.competitive].sort((x, y) => y.pct - x.pct)[0]!;
+    out.push(`${b(top.name)} leads the competitive landscape with ${b(`${top.pct}%`)} share.`);
+  } else if (data.competitiveNames?.length) {
+    const names = data.competitiveNames.slice(0, 3).map(b);
+    out.push(`Key players include ${names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0]}.`);
+  }
+  return out;
 }
 
 /**
@@ -222,33 +259,42 @@ export function buildLandscapeHtml(
       ${statChipRow([
         ...(cagr ? [{ label: 'CAGR', value: cagr.value, color: STATUS_GOOD }] : []),
         ...(incrementalGrowth(base!, forecast!) ? [{ label: 'Incremental Growth', value: incrementalGrowth(base!, forecast!)!, color: CHART_COLORS[0] }] : []),
+        ...(growthMultiple(base!, forecast!) ? [{ label: 'Growth Multiple', value: growthMultiple(base!, forecast!)!, color: CHART_COLORS[1] }] : []),
       ])}
     </div>` : '';
 
-  const competitivePanel = data.competitive.length ? `
+  const playerNodes = data.competitive.length
+    ? [...data.competitive].sort((a, b) => b.pct - a.pct).map((c) => ({ name: c.name, pct: c.pct }))
+    : (data.competitiveNames ?? []).map((name) => ({ name }));
+  const competitivePanel = playerNodes.length ? `
     <div class="panel" style="--accent:${CHART_COLORS[3]};">
-      <div class="panel-title">Competitive Landscape</div>
-      ${competitiveBubbles(data.competitive)}
-    </div>` : data.competitiveNames?.length ? `
-    <div class="panel" style="--accent:${CHART_COLORS[3]};">
-      <div class="panel-title">Key Players</div>
-      <div class="chip-list">${data.competitiveNames.map((n, i) => `<span class="chip"><span class="chip-dot" style="background:${CHART_COLORS[i % CHART_COLORS.length]};"></span>${escapeHtml(n)}</span>`).join('')}</div>
+      <div class="panel-title">${data.competitive.length ? 'Competitive Landscape' : 'Key Players'}</div>
+      ${playerOrbit(playerNodes)}
     </div>` : '';
 
   const driversPanel = data.drivers.length ? `
     <div class="panel" style="--accent:${CHART_COLORS[1]};">
       <div class="panel-title">Growth Drivers &mdash; Impact</div>
-      ${driverListWithImpact(data.drivers, CHART_COLORS[1])}
+      ${driverCards(data.drivers, CHART_COLORS[1]!)}
     </div>` : '';
 
   const regionsPanel = data.regions.length ? `
     <div class="panel" style="--accent:${CHART_COLORS[0]};">
-      <div class="panel-title">Regional Heat Map &mdash; Share by Country</div>
-      ${heatMapGrid(data.regions)}
+      <div class="panel-title">Regional Heat Map &mdash; Share by Region</div>
+      ${regionMosaic(data.regions)}
+    </div>` : '';
+
+  const takeaways = takeawayItems(base, forecast, data);
+  const takeawayPanel = takeaways.length ? `
+    <div class="panel" style="--accent:${STATUS_GOOD};">
+      <div class="panel-title">Key Takeaways</div>
+      <div class="takeaway-grid">${takeaways.map((t, i) => `
+        <div class="takeaway"><span class="takeaway-num" style="background:${CHART_COLORS[i % CHART_COLORS.length]};">${i + 1}</span><span class="takeaway-text">${t}</span></div>`).join('')}
+      </div>
     </div>` : '';
 
   const topRow = (growthPanel || competitivePanel) ? `<div class="row">${growthPanel}${competitivePanel}</div>` : '';
-  const bottomRow = (driversPanel || regionsPanel) ? `<div class="row">${driversPanel}${regionsPanel}</div>` : '';
+  const bottomRow = (driversPanel || regionsPanel || takeawayPanel) ? `<div class="row">${driversPanel}${regionsPanel}${takeawayPanel}</div>` : '';
 
   return `<!DOCTYPE html>
 <html>
@@ -259,46 +305,47 @@ export function buildLandscapeHtml(
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { width: 832px; }
+  html, body { width: 1132px; }
   body { background: #eef1f8; font-family: 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif; padding: 16px; }
   .card { width: 100%; background: #f4f6fb; border-radius: 22px; overflow: hidden; box-shadow: 0 12px 48px rgba(37,42,90,0.18); display: flex; flex-direction: column; }
-  .header { background: linear-gradient(120deg, #0e2153 0%, #234a92 100%); color: white; padding: 16px 26px; display: flex; align-items: center; justify-content: space-between; }
-  .header-eyebrow { font-size: 12px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase; opacity: 0.65; margin-bottom: 4px; }
-  .header-title { font-size: 28px; font-weight: 900; letter-spacing: 0.2px; }
-  .header-sub { font-size: 15.5px; opacity: 0.85; margin-top: 3px; font-weight: 600; }
-  .header-source { white-space: nowrap; flex-shrink: 0; margin-left: 18px; font-size: 12.5px; opacity: 0.7; font-weight: 700; letter-spacing: 0.3px; }
+  .header { background: linear-gradient(120deg, #0e2153 0%, #234a92 100%); color: white; padding: 12px 30px; display: flex; align-items: center; justify-content: space-between; }
+  .header-eyebrow { font-size: 10.5px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase; opacity: 0.65; margin-bottom: 4px; }
+  .header-title { font-size: 24px; font-weight: 900; letter-spacing: 0.2px; }
+  .header-sub { font-size: 14px; opacity: 0.85; margin-top: 3px; font-weight: 600; }
+  .header-source { white-space: nowrap; flex-shrink: 0; margin-left: 18px; font-size: 11px; opacity: 0.7; font-weight: 700; letter-spacing: 0.3px; }
 
   .row { display: flex; align-items: stretch; gap: 10px; padding: 10px 16px; background: #f4f6fb; }
   .row:first-of-type { padding-top: 14px; }
   .row:last-of-type { padding-bottom: 16px; }
-  .panel { flex: 1; background: #f7f8fc; border-radius: 14px; padding: 16px 18px; display: flex; flex-direction: column; min-width: 0; }
-  .panel-title { font-size: 13px; font-weight: 800; color: #6b7a94; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 7px; padding-left: 8px; border-left: 3px solid var(--accent, #2563eb); }
+  .panel { flex: 1 1 0; background: #f7f8fc; border-radius: 14px; padding: 14px 20px; display: flex; flex-direction: column; min-width: 0; }
+  .panel-title { font-size: 10.5px; font-weight: 800; color: #6b7a94; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 7px; padding-left: 8px; border-left: 3px solid var(--accent, #2563eb); }
 
   .stat-chip-row { display: flex; gap: 8px; margin-top: 8px; }
   .stat-chip { flex: 1; background: #ffffff; border-radius: 10px; padding: 7px 10px; text-align: center; }
-  .stat-chip-value { font-size: 17px; font-weight: 900; line-height: 1.15; }
-  .stat-chip-label { font-size: 11px; color: #8592ab; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; margin-top: 2px; }
+  .stat-chip-value { font-size: 13px; font-weight: 900; line-height: 1.15; }
+  .stat-chip-label { font-size: 9px; color: #8592ab; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; margin-top: 2px; }
 
-  .driver-row { display: flex; align-items: flex-start; gap: 9px; margin-bottom: 10px; }
-  .driver-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
-  .driver-text { font-size: 15px; color: ${INK_PRIMARY}; font-weight: 600; line-height: 1.35; flex: 1; }
-  .impact-meter { display: inline-flex; gap: 3px; flex-shrink: 0; margin-top: 4px; margin-left: 6px; }
-  .impact-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .driver-stack { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+  .driver-card { flex: 1; display: flex; align-items: center; gap: 10px; background: #ffffff; border-radius: 10px; padding: 5px 12px; }
+  .ring { flex-shrink: 0; }
+  .driver-text { font-size: 11.5px; color: ${INK_PRIMARY}; font-weight: 600; line-height: 1.35; flex: 1; }
+  .driver-pill { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap; flex-shrink: 0; }
 
-  .heatmap-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-  .heat-tile { border-radius: 8px; padding: 10px 8px; text-align: center; }
-  .heat-pct { font-size: 19px; font-weight: 900; }
-  .heat-name { font-size: 12.5px; font-weight: 700; margin-top: 2px; opacity: 0.9; }
+  .mosaic { display: flex; gap: 5px; flex: 1; min-height: 130px; }
+  .mosaic-col { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .mosaic-tile { border-radius: 8px; min-width: 0; }
+  .mosaic-big { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 8px; }
+  .mosaic-pct { font-size: 24px; font-weight: 900; line-height: 1.1; }
+  .mosaic-name { font-size: 11px; font-weight: 700; margin-top: 3px; opacity: 0.92; }
+  .mosaic-small { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 4px 8px; text-align: center; min-height: 0; }
+  .mosaic-pct-s { font-size: 14px; font-weight: 900; }
+  .mosaic-name-s { font-size: 10px; font-weight: 700; opacity: 0.92; }
 
-  .bubble-row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-around; gap: 8px 6px; flex: 1; padding-top: 8px; }
-  .bubble-col { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 0 1 auto; min-width: 72px; }
-  .bubble-pct-out { font-size: 17px; font-weight: 900; line-height: 1.1; }
-  .bubble { border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-  .bubble-pct { color: #fff; font-size: 14.5px; font-weight: 900; }
-  .bubble-name { font-size: 12.5px; font-weight: 700; color: ${INK_SECONDARY}; text-align: center; line-height: 1.2; }
-  .chip-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
-  .chip { display: inline-flex; align-items: center; gap: 7px; background: #ffffff; border-radius: 999px; padding: 7px 14px; font-size: 14px; font-weight: 700; color: ${INK_PRIMARY}; }
-  .chip-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .takeaway-grid { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+  .takeaway { flex: 1; display: flex; align-items: center; gap: 10px; background: #ffffff; border-radius: 10px; padding: 6px 12px; }
+  .takeaway-num { width: 20px; height: 20px; border-radius: 50%; color: #fff; font-size: 10.5px; font-weight: 900; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .takeaway-text { font-size: 11.5px; color: ${INK_PRIMARY}; font-weight: 600; line-height: 1.35; }
+  .takeaway-text b { font-weight: 900; }
 </style>
 </head>
 <body>
@@ -321,7 +368,7 @@ export function buildLandscapeHtml(
 async function renderLandscapePng(html: string, outPath: string): Promise<void> {
   const browser = await chromium.launch({ headless: true });
   try {
-    const page = await browser.newPage({ viewport: { width: 900, height: 1400 }, deviceScaleFactor: 2 });
+    const page = await browser.newPage({ viewport: { width: 1200, height: 1400 }, deviceScaleFactor: 2 });
     await page.setContent(html, { waitUntil: 'networkidle' });
     await page.evaluate(() => (document as any).fonts?.ready).catch(() => {});
     await page.locator('.card').screenshot({ path: outPath });

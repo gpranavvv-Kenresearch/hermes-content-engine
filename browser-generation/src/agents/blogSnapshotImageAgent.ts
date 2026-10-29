@@ -10,6 +10,12 @@
  * data) — reimplemented here in TS using Playwright (already a project
  * dependency, no new Python/html2image install needed) and driven by
  * whatever metrics the prompt actually returned instead of a fixed template.
+ *
+ * LOCKED DESIGN (approved 2026-10-29). Wide horizontal card, 1132px, about 1.9:1: hero strip (base, CAGR, forecast) on top, then
+ * Market Structure cards (icon badge + dot meter for any %), the chart column (trend bubbles + stat chips, segments, shares) and the
+ * Implied Growth Path (colourful stepping-stone bubbles; Key Players moved to the landscape image, orbit kept only as a fallback
+ * when there is no base-to-forecast pair). Never portrait, no bar/line/pie/donut, nothing the data supplies may be dropped. Do not
+ * change the layout, sizes or sections without the user's approval; tests/images.test.ts and tests/imageLayout.test.ts guard it.
  */
 
 import { chromium } from 'playwright';
@@ -97,6 +103,8 @@ export const CHART_COLORS = ['#2f5fa3', '#3f8f6c', '#c1852f', '#7d6aa8', '#b2506
 // shade change reads as "later", where two different colors would wrongly
 // imply two different things being compared.
 const SEQ_EARLY = '#8aa6cf';
+// Growth path ramp: cool blue early, through teal, green and amber, to a warm rose-violet at the forecast year.
+const GROWTH_PATH_RAMP = ['#5b8fd0', '#3f8b9c', '#3f8f6c', '#c1852f', '#b25064', '#7d6aa8'];
 const SEQ_LATE = '#2f5fa3';
 export const STATUS_GOOD = '#3f8f6c';
 export const INK_PRIMARY = '#0b1220';
@@ -219,7 +227,7 @@ export function withAlpha(hex: string, alpha: number): string {
 function buildTrendBubbleWidget(title: string, points: TrendPoint[], color: string, big = false): string {
   const n = points.length;
   // A trend that has a whole row to itself gets larger bubbles instead of floating in empty space.
-  const minPx = big ? (n >= 3 ? 80 : 92) : n >= 3 ? 56 : 66, maxPx = big ? (n >= 3 ? 120 : 128) : n >= 3 ? 96 : 112;
+  const minPx = big ? (n >= 3 ? 80 : 92) : n >= 3 ? 40 : 48, maxPx = big ? (n >= 3 ? 120 : 128) : n >= 3 ? 70 : 84;
   const items = points.map((p, i) => {
     const size = minPx + (p.pct / 100) * (maxPx - minPx);
     const opacity = n === 1 ? 1 : 0.35 + (i / (n - 1)) * 0.65;
@@ -253,6 +261,152 @@ function buildTrendBubbleWidget(title: string, points: TrendPoint[], color: stri
         <div class="trend-bubble-row"${n >= 3 ? ' style="flex-wrap:nowrap;"' : ''}>${withArrows}</div>
         ${delta}
       </div>`;
+}
+
+export const FONT_STACK = "'Plus Jakarta Sans', Arial, sans-serif";
+
+/** At most two short lines for an SVG label; a long name is cut with an ellipsis instead of overflowing. */
+export function wrapLabel(name: string, max = 15): string[] {
+  const words = name.split(/\s+/);
+  const lines: string[] = [];
+  let cur = '';
+  for (const w of words) {
+    if (cur && (cur + ' ' + w).length > max) { lines.push(cur); cur = w; } else cur = cur ? `${cur} ${w}` : w;
+  }
+  if (cur) lines.push(cur);
+  const out = lines.slice(0, 2).map((l) => (l.length > max + 2 ? `${l.slice(0, max)}…` : l));
+  if (lines.length > 2) out[1] = `${out[1]!.replace(/…$/, '')}…`;
+  return out;
+}
+
+/**
+ * Key players / competitive landscape as an ORBIT MAP: a hub with the player count, each company a node on an orbit
+ * around it. With shares, node AREA is the share (radius = k * sqrt(pct)) and the % sits under the name; without shares
+ * every node is the same size and no ranking is implied. No bar, line, pie or donut.
+ */
+export function playerOrbit(items: { name: string; pct?: number }[], size: { w?: number; rx?: number; ry?: number } = {}): string {
+  const w = size.w ?? 520, cx = w / 2, cy = 0;
+  const rx = size.rx ?? 196, ry = size.ry ?? 70;
+  let top = -38, bottom = 38;
+  const n = items.length;
+  const hasShare = items.some((i) => i.pct !== undefined);
+  const maxPct = Math.max(...items.map((i) => i.pct ?? 0), 0.0001);
+  const nodes = items.map((it, i) => {
+    // Offset by half a step so no node sits at 12 o'clock, where its label would run into the hub.
+    const ang = -Math.PI / 2 + Math.PI / n + (2 * Math.PI * i) / n;
+    const x = cx + rx * Math.cos(ang), y = cy + ry * Math.sin(ang);
+    const r = hasShare && it.pct !== undefined ? Math.max(11, Math.round(30 * Math.sqrt(it.pct / maxPct))) : 22;
+    const color = CHART_COLORS[i % CHART_COLORS.length]!;
+    const lines = wrapLabel(it.name);
+    const labelY = y + r + 12;
+    top = Math.min(top, y - r);
+    bottom = Math.max(bottom, labelY + lines.length * 11 + (hasShare && it.pct !== undefined ? 14 : 2));
+    const label = lines.map((l, j) => `<text x="${x.toFixed(1)}" y="${(labelY + j * 11).toFixed(1)}" text-anchor="middle" font-family="${FONT_STACK}" font-size="10" font-weight="700" fill="${INK_PRIMARY}">${escapeHtml(l)}</text>`).join('');
+    const pct = hasShare && it.pct !== undefined
+      ? `<text class="bubble-pct-out" x="${x.toFixed(1)}" y="${(labelY + lines.length * 11 + 1).toFixed(1)}" text-anchor="middle" font-family="${FONT_STACK}" font-size="12" font-weight="900" fill="${color}">${it.pct}%</text>` : '';
+    return `
+      <line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#d5dcea" stroke-width="1.5"/>
+      <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r}" fill="${color}" opacity="0.92"/>
+      <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r}" fill="none" stroke="#ffffff" stroke-width="2"/>
+      ${label}${pct}`;
+  });
+  return `
+    <svg viewBox="0 ${(top - 6).toFixed(0)} ${w} ${(bottom - top + 12).toFixed(0)}" style="width:100%;height:auto;display:block;margin:auto 0;">
+      <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="none" stroke="#c3ccdb" stroke-width="1.5" stroke-dasharray="4 5"/>
+      ${nodes.join('')}
+      <circle cx="${cx}" cy="${cy}" r="38" fill="#234a92"/>
+      <circle cx="${cx}" cy="${cy}" r="38" fill="none" stroke="#ffffff" stroke-width="3"/>
+      <text x="${cx}" y="${cy + 4}" text-anchor="middle" font-family="${FONT_STACK}" font-size="24" font-weight="900" fill="#ffffff">${n}</text>
+      <text x="${cx}" y="${cy + 17}" text-anchor="middle" font-family="${FONT_STACK}" font-size="9" font-weight="700" fill="#ffffff" opacity="0.85">KEY PLAYERS</text>
+    </svg>`;
+}
+
+/** Colour along a multi-stop ramp (0 = first stop, 1 = last), so a run of bubbles shifts hue instead of just darkening. */
+function rampColor(stops: string[], t: number): string {
+  const pos = Math.min(Math.max(t, 0), 1) * (stops.length - 1);
+  const i = Math.min(Math.floor(pos), stops.length - 2);
+  return mixHex(stops[i]!, stops[i + 1]!, pos - i);
+}
+
+function mixHex(a: string, b: string, t: number): string {
+  const p = (h: string, i: number) => parseInt(h.slice(1 + i * 2, 3 + i * 2), 16);
+  const c = (i: number) => Math.round(p(a, i) + (p(b, i) - p(a, i)) * t).toString(16).padStart(2, '0');
+  return `#${c(0)}${c(1)}${c(2)}`;
+}
+
+/**
+ * Implied growth path as STEPPING-STONE BUBBLES: one bubble per year from the base year to the forecast year, bubble AREA is
+ * the implied value, climbing left to right in a lighter-to-darker shade. The values in between are the base and forecast
+ * compounded at the rate that joins them (arithmetic on the two supplied figures, labelled "implied"). No line, bar or pie.
+ * Null when the base or forecast value or either year is missing.
+ */
+function growthPathPanel(base: SnapshotMetric, forecast: SnapshotMetric, cagr?: SnapshotMetric): string | null {
+  const bs = splitTrailingYear(base), fs = splitTrailingYear(forecast);
+  const b = firstNumber(bs.value), f = firstNumber(fs.value);
+  const y0 = Number(bs.year), y1 = Number(fs.year);
+  if (b === null || f === null || b <= 0 || f <= 0 || !(y0 > 1900) || !(y1 > y0) || y1 - y0 > 30) return null;
+  const span = y1 - y0;
+  const steps = Math.min(span + 1, 7);
+  const rate = Math.pow(f / b, 1 / span);
+  const points = Array.from({ length: steps }, (_, i) => {
+    const k = Math.round((i * span) / (steps - 1));
+    return { year: y0 + k, v: k === 0 ? b : k === span ? f : b * Math.pow(rate, k) };
+  });
+  const vmax = Math.max(...points.map((p) => p.v));
+  const fmt = (v: number) => (v >= 100 ? Math.round(v).toLocaleString('en-US') : v.toFixed(1));
+  const unitMatch = fs.value.match(/^([A-Za-z]+)\s/);
+  const suffixMatch = fs.value.match(/(million|billion|thousand|trillion)\b/i);
+  const unitText = `${unitMatch ? unitMatch[1] + ' ' : ''}${suffixMatch ? suffixMatch[1] : ''}`.trim();
+  const w = 340, h = 262, x0 = 30, x1 = w - 30;
+  const nodes = points.map((p, i) => {
+    const t = steps === 1 ? 1 : i / (steps - 1);
+    const x = x0 + (x1 - x0) * t, y = 206 - 128 * t;
+    const r = Math.max(8, 26 * Math.sqrt(p.v / vmax));
+    const color = rampColor(GROWTH_PATH_RAMP, t);
+    return `
+      <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(r + 5).toFixed(1)}" fill="${color}" opacity="0.16"/>
+      <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}" fill="${color}"/>
+      <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.85"/>
+      <text x="${x.toFixed(1)}" y="${(y + r + 11).toFixed(1)}" text-anchor="middle" font-family="${FONT_STACK}" font-size="10" font-weight="800" fill="${INK_PRIMARY}">${fmt(p.v)}</text>
+      <text x="${x.toFixed(1)}" y="${(y + r + 21).toFixed(1)}" text-anchor="middle" font-family="${FONT_STACK}" font-size="9" font-weight="800" fill="${color}">${p.year}</text>`;
+  }).join('');
+  const added = f - b;
+  const addedText = `+${unitMatch ? unitMatch[1] + ' ' : ''}${added.toFixed(1)}${suffixMatch ? ' ' + suffixMatch[1] : ''}`;
+  const callout = `
+      <rect x="6" y="10" width="150" height="46" rx="10" fill="#ffffff"/>
+      <text x="81" y="31" text-anchor="middle" font-family="${FONT_STACK}" font-size="13" font-weight="900" fill="${STATUS_GOOD}">${escapeHtml(addedText)}</text>
+      <text x="81" y="45" text-anchor="middle" font-family="${FONT_STACK}" font-size="9" font-weight="700" fill="${INK_SECONDARY}">added ${y0} to ${y1}</text>`;
+  const note = cagr ? `Implied year-by-year path at ${escapeHtml(cagr.value)} CAGR` : 'Implied year-by-year path';
+  return `
+    <div class="widget" style="--accent:${SEQ_LATE};">
+      <div class="chart-title">Implied Growth Path${unitText ? ` (${escapeHtml(unitText)})` : ''}</div>
+      <svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;display:block;margin:auto 0;">${callout}${nodes}</svg>
+      <div class="path-note">${note}</div>
+    </div>`;
+}
+
+/** Small glyph for a Market Structure row, picked from its label. A kind of metric gets one fixed colour so the same row always looks the same. */
+function structureIcon(label: string): { svg: string; color: string } {
+  const l = label.toLowerCase();
+  const open = '<svg viewBox="0 0 24 24" width="18" height="18">';
+  const stroke = (c: string) => `fill="none" stroke="${c}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"`;
+  if (/fastest|growing/.test(l)) { const c = CHART_COLORS[1]!; return { color: c, svg: `${open}<path d="M3 17 L9 11 L13 15 L20 7" ${stroke(c)}/><path d="M15 7 H20 V12" ${stroke(c)}/></svg>` }; }
+  if (/geograph|region|country|location/.test(l)) { const c = CHART_COLORS[2]!; return { color: c, svg: `${open}<path d="M12 22 C6 15 5 12 5 9.5 A7 7 0 0 1 19 9.5 C19 12 18 15 12 22Z" fill="${c}"/><circle cx="12" cy="9.5" r="2.6" fill="#fff"/></svg>` }; }
+  if (/driver|catalyst|tailwind/.test(l)) { const c = CHART_COLORS[5]!; return { color: c, svg: `${open}<path d="M13 2 L5 13 H11 L10 22 L19 10 H13 Z" fill="${c}"/></svg>` }; }
+  if (/constraint|restraint|challenge|risk|barrier|headwind/.test(l)) { const c = CHART_COLORS[4]!; return { color: c, svg: `${open}<path d="M12 3 L22 20 H2 Z" fill="${c}"/><rect x="11" y="9" width="2" height="6" fill="#fff"/><circle cx="12" cy="17.4" r="1.2" fill="#fff"/></svg>` }; }
+  const c = CHART_COLORS[0]!;
+  return { color: c, svg: `${open}<circle cx="8.5" cy="14" r="5.5" fill="${c}"/><circle cx="17" cy="8" r="3.6" fill="${c}" opacity="0.6"/></svg>` };
+}
+
+/** Ten dots, one filled per 10%: a share of a whole drawn as a dot meter, never a bar or pie. Null when the value holds no percentage. */
+function percentMeter(value: string, color: string): string {
+  const m = value.match(/(\d+(?:\.\d+)?)\s*%/);
+  if (!m) return '';
+  const pct = parseFloat(m[1]!);
+  if (!(pct >= 0 && pct <= 100)) return '';
+  const filled = Math.max(pct > 0 ? 1 : 0, Math.round(pct / 10));
+  return `<div class="struct-meter"><div class="struct-meter-pct" style="color:${color};">${m[1]}%</div><div class="struct-meter-dots">${Array.from({ length: 10 }, (_, i) =>
+    `<span style="background:${i < filled ? color : '#dfe5f0'};"></span>`).join('')}</div></div>`;
 }
 
 /**
@@ -367,13 +521,18 @@ export function buildSnapshotHtml(marketName: string, metrics: SnapshotMetric[])
         <div class="kpi-label">${escapeHtml(kpiMetrics[i].label)}${sy.year ? ` &middot; ${escapeHtml(sy.year)}` : ''}</div>
       </div>`).join('');
 
-  const structureRows = structureMetrics.map((m) => {
+  const structureCards = structureMetrics.map((m) => {
     const sy = splitTrailingYear(m);
+    const icon = structureIcon(m.label);
     return `
-          <tr class="data-row">
-            <td class="col-metric">${escapeHtml(m.label)}${sy.year ? ` <span class="col-year">(${escapeHtml(sy.year)})</span>` : ''}</td>
-            <td class="col-value">${escapeHtml(sy.value || '—')}</td>
-          </tr>`;
+          <div class="struct-card">
+            <span class="struct-icon" style="background:${withAlpha(icon.color, 0.14)};">${icon.svg}</span>
+            <div class="struct-text">
+              <div class="struct-label">${escapeHtml(m.label)}${sy.year ? ` (${escapeHtml(sy.year)})` : ''}</div>
+              <div class="struct-value">${escapeHtml(sy.value || '—')}</div>
+            </div>
+            ${percentMeter(sy.value, icon.color)}
+          </div>`;
   }).join('');
 
   // Every chartable metric becomes its own tile in a 2-column widget grid —
@@ -422,8 +581,24 @@ export function buildSnapshotHtml(marketName: string, metrics: SnapshotMetric[])
   // leftover blank cells wherever possible — a fixed 3 columns left 2 dead
   // cells for a 4-widget row (confirmed live 2026-09-18: "Average Blended
   // ASP" sat alone in a row with visible empty space beside it).
-  // The card is article-column width (832px), so two columns is the most that stays readable. An odd last widget spans the full row (CSS).
-  const widgetCols = widgets.length <= 1 ? 1 : 2;
+  // The card is 1132px wide. An odd last widget spans the full row (CSS).
+  const widgetCols = widgets.length <= 2 ? 1 : 2;
+
+  const playerNames = keyPlayersMetric ? parseNameList(keyPlayersMetric.value) : [];
+  // The key players already have their own orbit map on the landscape image, so this card shows the growth path instead; the orbit stays only as a fallback when there is no base-to-forecast pair.
+  const growthPath = hasHeroPair ? growthPathPanel(baseValueMetric!, forecastValueMetric!, heroCagr) : null;
+  const playersPanel = growthPath ?? (playerNames.length ? `
+    <div class="widget" style="--accent:${CHART_COLORS[3]};">
+      <div class="chart-title">Key Players</div>
+      ${playerOrbit(playerNames.map((name) => ({ name })), { w: 340, rx: 122, ry: 66 })}
+    </div>` : '');
+  // Wide three-column body: stat cards | charts | key players. A column that has no data is dropped, and a crowded chart column gets more width.
+  const bodyColumns = [
+    ...(kpis ? ['minmax(0, 0.8fr)'] : []),
+    ...(structureCards ? ['minmax(0, 1.1fr)'] : []),
+    ...(widgets.length ? [widgets.length <= 2 ? 'minmax(0, 1fr)' : 'minmax(0, 1.8fr)'] : []),
+    ...(playersPanel ? ['minmax(330px, 1fr)'] : []),
+  ].join(' ') || '1fr';
 
   // Exact same proportions as the Desktop/agents/generate_table_image.py
   // reference (1100x530), scaled up 1.3636x to a 1500-wide canvas — same
@@ -510,12 +685,10 @@ export function buildSnapshotHtml(marketName: string, metrics: SnapshotMetric[])
      column is tallest, which otherwise left dead blank space inside the
      shorter column (confirmed live 2026-09-18: a 2-widget grid stretched
      to match a 4-box KPI column left a big empty gap under the widgets). */
-  .body { display: flex; align-items: flex-start; gap: 10px; padding: 10px 16px; background: #f4f6fb; }
+  .body { display: grid; align-items: stretch; gap: 10px; padding: 10px 16px; background: #f4f6fb; }
 
   /* Left KPI column — each stat is its own floating rounded card */
   .kpi-col {
-    width: 320px;
-    min-width: 320px;
     display: flex;
     flex-direction: column;
     gap: 14px;
@@ -535,12 +708,13 @@ export function buildSnapshotHtml(marketName: string, metrics: SnapshotMetric[])
   /* Right area: optional Market Structure table + the chart widget grid — same floating-card language as the KPI column */
   .right-area { flex: 1; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
   .widget-grid {
-    flex: 1;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 8px;
-    align-content: start;
+    grid-auto-rows: 1fr;
+    min-width: 0;
   }
+  .widget-grid .widget:last-child:nth-child(odd) { grid-column: 1 / -1; }
   .widget {
     background: #f7f8fc;
     border-radius: 14px;
@@ -551,7 +725,17 @@ export function buildSnapshotHtml(marketName: string, metrics: SnapshotMetric[])
     min-width: 0;
     --accent: #2563eb;
   }
-  .structure-card { background: #f7f8fc; border-radius: 16px; overflow: hidden; }
+  .path-note { font-size: 9.5px; font-weight: 700; color: #8592ab; text-align: center; margin-top: 2px; }
+  .struct-list { display: flex; flex-direction: column; justify-content: center; gap: 6px; flex: 1; }
+  .struct-card { flex: 1 1 auto; max-height: 76px; background: #ffffff; border-radius: 10px; padding: 6px 12px; display: flex; align-items: center; gap: 10px; }
+  .struct-icon { width: 30px; height: 30px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .struct-text { flex: 1; min-width: 0; }
+  .struct-meter { flex-shrink: 0; text-align: center; }
+  .struct-meter-pct { font-size: 15px; font-weight: 900; line-height: 1; }
+  .struct-meter-dots { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; margin-top: 4px; }
+  .struct-meter-dots span { width: 7px; height: 7px; border-radius: 50%; display: block; }
+  .struct-label { font-size: 9px; font-weight: 800; color: #8592ab; text-transform: uppercase; letter-spacing: 0.4px; }
+  .struct-value { font-size: 13px; font-weight: 800; color: #1d4ed8; line-height: 1.3; margin-top: 2px; }
   .section-label {
     padding: 13px 24px;
     font-size: 12.5px;
@@ -596,7 +780,7 @@ export function buildSnapshotHtml(marketName: string, metrics: SnapshotMetric[])
   .waffle-label { font-size: 10.5px; color: ${INK_SECONDARY}; font-weight: 700; margin-top: 2px; }
 
   /* Size-scaled bubble comparison (before → after trends) */
-  .trend-bubble-row { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; padding-top: 6px; }
+  .trend-bubble-row { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: nowrap; padding-top: 6px; }
   .trend-bubble-item { display: flex; flex-direction: column; align-items: center; gap: 4px; }
   .trend-bubble { border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 4px; }
   .trend-bubble-main { font-size: 10.5px; font-weight: 900; line-height: 1.1; }
@@ -624,55 +808,7 @@ export function buildSnapshotHtml(marketName: string, metrics: SnapshotMetric[])
   }
   .player-dot { width: 5px; height: 5px; border-radius: 50%; background: #234a92; flex-shrink: 0; }
 
-  /* Article-column sizing. This image is shown about 760px wide in the blog, so the card is 832px wide with larger type
-     (a 1100px card scaled down made every label unreadable). */
-  html, body { width: 832px; }
-  .header { padding: 16px 26px; }
-  .header-eyebrow { font-size: 12px; }
-  .header-title { font-size: 28px; }
-  .header-sub { font-size: 15.5px; }
-  .header-badge { font-size: 15px; padding: 9px 22px; white-space: nowrap; flex-shrink: 0; margin-left: 18px; }
-  .hero-row { padding: 14px 22px; gap: 14px; margin-top: 12px; }
-  .hero-value { font-size: 26px; }
-  .hero-label { font-size: 12.5px; }
-  .hero-cagr { font-size: 14px; padding: 5px 13px; }
-  .hero-arrow { font-size: 20px; }
-  .kpi-col { width: 250px; min-width: 250px; }
-  .kpi-value { font-size: 26px; }
-  .kpi-label { font-size: 13.5px; }
-  .section-label { font-size: 14px; padding: 14px 24px; }
-  tr.data-row td { font-size: 18px; padding: 13px 24px; }
-  .col-metric { width: 42%; }
-  .chart-title { font-size: 13px; margin-bottom: 8px; }
-  .widget-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
-  .widget { padding: 14px 18px; }
-  .widget:last-child:nth-child(odd) { grid-column: 1 / -1; }
-  .bubble-row { gap: 10px 8px; justify-content: space-around; }
-  .bubble-col { flex: 0 1 auto; min-width: 72px; gap: 4px; }
-  .bubble-pct-out { font-size: 17px; font-weight: 900; line-height: 1.1; }
-  .bubble-name { font-size: 12.5px; }
-  .leading-badge { font-size: 10.5px; padding: 3px 9px; }
-  .waffle-wrap { gap: 18px; }
-  .waffle-grid { width: 150px; gap: 3px; }
-  .waffle-dot { width: 11px; height: 11px; }
-  .waffle-pct { font-size: 30px; }
-  .waffle-label { font-size: 13px; }
-  .trend-bubble-row { gap: 12px; padding-top: 8px; }
-  .trend-bubble-main { font-size: 16px; }
-  .trend-bubble-unit { font-size: 12px; }
-  .trend-bubble-year { font-size: 14px; }
-  .trend-arrow { font-size: 24px; }
-  .trend-stats { gap: 12px; margin-top: 16px; }
-  .trend-stat { padding: 12px 10px; }
-  .trend-stat-v { font-size: 24px; }
-  .trend-stat-l { font-size: 13px; }
-  .trend-bubble-row { gap: 22px; }
-  .trend-bubble-big .trend-bubble-main { font-size: 22px; }
-  .trend-bubble-big .trend-bubble-unit { font-size: 14px; }
-  .players-card { padding: 12px 18px; }
-  .player-chip { font-size: 14px; padding: 6px 14px; }
-  .player-dot { width: 7px; height: 7px; }
-  .footer { font-size: 12.5px; padding: 10px 26px 12px; }
+
 
   .footer {
     background: #f4f6fb;
@@ -699,22 +835,12 @@ export function buildSnapshotHtml(marketName: string, metrics: SnapshotMetric[])
 
   ${heroHtml}
 
-  <div class="body">
+  <div class="body" style="grid-template-columns: ${bodyColumns};">
     ${kpis ? `<div class="kpi-col">${kpis}</div>` : ''}
-
-    <div class="right-area">
-      ${structureRows ? `<div class="structure-card"><div class="section-label">Market Structure</div><table>${structureRows}</table></div>` : ''}
-      ${widgets.length ? `<div class="widget-grid" style="grid-template-columns: repeat(${widgetCols}, 1fr);">${widgets.join('')}</div>` : ''}
-    </div>
+    ${structureCards ? `<div class="widget" style="--accent:${CHART_COLORS[0]};"><div class="chart-title">Market Structure</div><div class="struct-list">${structureCards}</div></div>` : ''}
+    ${widgets.length ? `<div class="widget-grid" style="grid-template-columns: repeat(${widgetCols}, 1fr);">${widgets.join('')}</div>` : ''}
+    ${playersPanel}
   </div>
-
-  ${keyPlayersMetric ? `
-  <div class="players-card">
-    <div class="section-label">Key Players</div>
-    <div class="players-list">
-      ${parseNameList(keyPlayersMetric.value).map((name) => `<span class="player-chip"><span class="player-dot"></span>${escapeHtml(name)}</span>`).join('')}
-    </div>
-  </div>` : ''}
 
   <div class="footer">
     <span>Source: Ken Research Analysis</span>

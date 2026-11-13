@@ -15,7 +15,7 @@ const med = (source: string, medium = 'referral'): UtmEntry => ({
 export const utmTable: Record<string, UtmEntry> = {
   x: med('x'),
   facebook: med('facebook'),
-  linkedin: med('linkedin'),
+  linkedin: med('linkedinpost'),
   medium: med('medium'),
   linkmate: med('linkmate'),
   googlesite: med('googlesites'),

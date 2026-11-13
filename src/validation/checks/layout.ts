@@ -22,6 +22,7 @@ export function brandHashtag(brandName: string): string {
 
 export function checkLayout(plain: string, ctx: CheckContext): ValidationIssue[] {
   if (ctx.limit.formatting.layout !== 'numbered_points') return [];
+  if (process.env.HCE_FREE_PROMPT_FILE?.trim() && ctx.platform === 'linkedin') return []; // free-format experiment: no fixed structure to enforce
   const layout = layoutById(ctx.layout, ctx.platform);
   const issues: ValidationIssue[] = [];
   const lines = plain.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);

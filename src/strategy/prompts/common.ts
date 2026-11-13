@@ -6,6 +6,38 @@ import { MIN_DATA_YEAR } from '../../utils/years.js';
 import { layoutById } from '../layouts.js';
 import { TONES, findOption } from '../variation-axes.js';
 import { shortHash } from '../../utils/hash.js';
+import { readFileSync } from 'node:fs';
+
+/**
+ * Opt-in experiment (not part of the frozen format pool): when HCE_FREE_PROMPT_FILE points to a text file,
+ * LinkedIn drafts use that file as the layout section instead of one of the ten approved formats.
+ * Unset by default, so normal runs are unchanged.
+ */
+export function freePromptFor(platform: PlatformId): string | null {
+  const file = process.env.HCE_FREE_PROMPT_FILE?.trim();
+  if (!file || (platform !== 'linkedin' && platform !== 'facebook')) return null;
+  return readFileSync(file, 'utf8').trim();
+}
+
+/** Evidence block for the free prompt: verified facts and report-page notes, plain lines. */
+export function freeEvidenceText(facts: readonly Fact[], notes: readonly { text: string }[] = []): string {
+  const fl = facts
+    .filter((x) => x.verificationStatus !== 'unverified')
+    .map((x) => {
+      const ctx = [x.period ? `period ${x.period}` : '', x.geography ?? '', x.marketDefinition ?? ''].filter(Boolean).join('; ');
+      return `- ${x.metric.replace(/_/g, ' ')} = ${x.value} ${x.unit}${ctx ? ` (${ctx})` : ''}`;
+    });
+  const nl = notes.map((n) => `- ${n.text}`);
+  // The report's own wording for each figure keeps base values and growth context that single facts drop.
+  const quotes = [...new Set(facts.map((x) => x.sourceQuote?.trim()).filter((q): q is string => Boolean(q)))].slice(0, 8).map((q) => `- ${q}`);
+  return ['FACTS:', ...fl, ...(quotes.length ? ['', 'REPORT STATEMENTS:', ...quotes] : []), '', 'SOURCE NOTES:', ...nl].join('\n');
+}
+
+/** Fills the placeholders of the free prompt file. */
+export function fillFreePrompt(template: string, v: { platform: PlatformId; title: string; url: string; evidence: string }): string {
+  const name = v.platform === 'facebook' ? 'Facebook' : 'LinkedIn';
+  return template.split('{{PLATFORM}}').join(name).split('{{TITLE}}').join(v.title).split('{{URL}}').join(v.url).split('{{EVIDENCE}}').join(v.evidence);
+}
 
 /**
  * Shared prompt sections. All prompt text is built here from config + the
@@ -299,6 +331,8 @@ export function layoutSection(config: LoadedConfig, platform: PlatformId, layout
     ]);
   }
   if (limit.formatting.layout !== 'numbered_points') return null;
+  const free = freePromptFor(platform);
+  if (free) return section('POST LAYOUT (free-format experiment; follow this brief instead of a fixed template)', [free]);
   const tag = `#${config.brand.name.replace(/\s+/g, '')}`;
   const { min, max } = limit.hashtags;
   const layout = layoutById(layoutId, platform);

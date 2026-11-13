@@ -73,6 +73,24 @@ export function validateText(input: ValidateTextInput, config: LoadedConfig): Va
   const ctx = { ...base, finalText, ...(input.layout !== undefined ? { layout: input.layout } : {}) };
   const issues: ValidationIssue[] = [];
 
+  if (process.env.HCE_FREE_PROMPT_FILE?.trim() && (input.platform === 'linkedin' || input.platform === 'facebook')) {
+    // Free-format experiment: only these sanities. Bold (brand and figures) and dash cleanup are applied deterministically in applyBold.
+    const free: ValidationIssue[] = [];
+    const KEEP = new Set(['MISSING_BRAND_MENTION', 'BRAND_NOT_BOLD', 'BANNED_CHARACTER']);
+    for (const check of hardFailChecks) issues.push(...check(plain, ctx));
+    issues.push(...checkBrandAndBold(view, ctx));
+    free.push(...issues.filter((i) => KEEP.has(i.code)));
+    const FREE_MAX = 2000;
+    if (finalText.length >= FREE_MAX) {
+      free.push({ code: 'OVER_HARD_LIMIT', severity: 'hard_fail', message: `The post is ${finalText.length} characters including spaces, line breaks, URL and hashtags; it must stay under ${FREE_MAX}. Cut whole sentences, not words.`, detail: { length: finalText.length, max: FREE_MAX, over: finalText.length - FREE_MAX + 1 } });
+    }
+    const urls = plain.match(/https?:\/\/[^\s<>]+/g) ?? [];
+    if (urls.length !== 1 || !/kenresearch\.com/i.test(urls[0] ?? '')) {
+      free.push({ code: 'FREE_REPORT_LINK', severity: 'hard_fail', message: `The post must contain the report URL exactly once, unchanged (found ${urls.length} URL(s)).` });
+    }
+    return ValidationReportSchema.parse({ draftId: input.draftId, passed: !free.some((i) => i.severity === 'hard_fail'), issues: free, checkedAt: (input.now?.() ?? new Date()).toISOString() });
+  }
+
   for (const check of hardFailChecks) issues.push(...check(plain, ctx));
   issues.push(...checkBrandAndBold(view, ctx));
   issues.push(...checkLayout(plain, ctx));

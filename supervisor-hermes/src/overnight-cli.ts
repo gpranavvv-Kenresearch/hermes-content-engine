@@ -10,6 +10,9 @@ import { JsonFileStore } from '../../src/store/store.js';
 import { pickRowAgent } from './agents/sheet.js';
 import { generateOvernightPost } from './overnight-runtime.js';
 import { acquireNightLock, assertReady, atomicSave, completedCounts, NIGHT_PLATFORMS, newNightPlan, recoveryKind, runNight, workerHealth, type NightJob, type NightPlan, type Targets, type WorkerHeartbeat } from './overnight.js';
+import { enableFreeTextMode } from '../../src/social/free-mode.js';
+
+enableFreeTextMode(); // Facebook/LinkedIn text: free-format prompt by default (HCE_FREE_PROMPT=off to disable)
 
 export interface NightArgs {
   targets: Targets; writeSheet: boolean; hours: number; id?: string; resume?: string;

@@ -98,16 +98,22 @@ export class HermesProvider implements LlmProvider {
 
   async generate(request: LlmRequest): Promise<LlmResult> {
     const started = Date.now();
-    const matching = this.opts.lessons.filter((lesson) => lesson.status !== 'retired' && (request.purpose === 'rewrite' ? request.prompt.includes(lesson.failureCode) : lesson.status === 'active')).slice(0, 3);
+    const freeMode = Boolean(process.env.HCE_FREE_PROMPT_FILE?.trim());
+    const matching = freeMode ? [] : this.opts.lessons.filter((lesson) => lesson.status !== 'retired' && (request.purpose === 'rewrite' ? request.prompt.includes(lesson.failureCode) : lesson.status === 'active')).slice(0, 3);
     for (const lesson of matching) this.usedLessonIds.add(lesson.id);
     const context = matching.length ? `\nPreviously verified repair procedures for this platform (not source facts):\n${matching.map((l) => `- ${l.failureCode}: ${l.procedure}`).join('\n')}\n` : '';
-    const recent = this.opts.recentTraces.slice(-3).map((trace) => {
+    const recent = freeMode ? [] : this.opts.recentTraces.slice(-3).map((trace) => {
       const failed = [...new Set(trace.attempts.flatMap((attempt) => attempt.failedCodes))].slice(0, 4);
       const last = trace.attempts.at(-1);
       return `- ${trace.status}; checks: ${failed.join(', ') || 'none'}; last action: ${last?.action ?? 'none'}; outcome: ${last?.outcome ?? trace.reason}`;
     });
     const caution = recent.length ? `\nRecent run outcomes for this platform. Failed actions are warnings, not methods to repeat; only verified lessons above are reusable procedures:\n${recent.join('\n')}\n` : '';
     const prompt = `You are writing a Ken Research social post. Use only supplied evidence for facts. Keep the requested output markers and fact IDs. Repository methods and memory never authorize new statistics. Do not change files, browse, or publish. Do not save draft text or market figures as permanent memory.\n${context}${caution}\n${request.prompt}`;
+    if (process.env.HCE_DUMP_PROMPT_DIR?.trim()) {
+      const { mkdirSync, writeFileSync } = await import('node:fs');
+      mkdirSync(process.env.HCE_DUMP_PROMPT_DIR, { recursive: true });
+      writeFileSync(`${process.env.HCE_DUMP_PROMPT_DIR}/${Date.now()}-${request.purpose ?? 'call'}.txt`, prompt, 'utf8');
+    }
     const answer = await this.call(prompt, 'skills,session_search', request.signal);
     return { text: answer, complete: true, provider: this.id, elapsedMs: Date.now() - started };
   }

@@ -22,6 +22,9 @@ import { processRow } from './orchestrator.js';
 import { Supervisor } from './supervisor.js';
 import { formatTimeline } from './timeline.js';
 import type { RowResult, SocialPlatform } from './types.js';
+import { enableFreeTextMode } from '../../src/social/free-mode.js';
+
+enableFreeTextMode(); // Facebook/LinkedIn text: free-format prompt by default (HCE_FREE_PROMPT=off to disable)
 
 export interface RunArgs {
   platform: SocialPlatform;

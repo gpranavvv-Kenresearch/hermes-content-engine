@@ -1,6 +1,7 @@
 import { parseModelOutput } from '../../../src/contracts.js';
 import { MAX_OUTPUT_TOKENS } from '../../../src/pipeline/generate-content.js';
 import { buildDraftPrompt, type StrategyItem } from '../../../src/strategy/index.js';
+import { isFreeTextPlatform } from '../../../src/social/free-mode.js';
 import type { AgentReport, SocialPlatform } from '../types.js';
 import type { AgentDeps } from './deps.js';
 import { usableFacts, type EvidenceOutput } from './evidence.js';
@@ -39,17 +40,19 @@ export async function runWriterAgent(
   const limit = deps.config.platformLimits[platform];
   // Stated on every attempt, at the end of the prompt, with the real numbers. The model overshoots when the range is only implied.
   const overBy = input.previousDraft && limit.targetMaxChars !== null ? input.previousDraft.length - limit.targetMaxChars : 0;
-  const lengthRule = limit.targetMaxChars === null
+  // Free-format Facebook/LinkedIn text: the free prompt states its own limit (under 2,000 characters); the old 1,000-1,700 band and the closing-question rule do not apply.
+  const free = isFreeTextPlatform(platform);
+  const lengthRule = free || limit.targetMaxChars === null
     ? ''
     : platform === 'x'
       ? `\n## LENGTH REQUIREMENT (STRICT)\nThe whole post must be at most ${limit.hardMaxChars ?? limit.targetMaxChars} characters including spaces, hashtags and the link (each URL counts as ${limit.urlCountsAs ?? 23}). There is no tolerance. Count before replying; if over, cut a clause.`
       : `\n## LENGTH REQUIREMENT (STRICT)\nThe final post must be between ${limit.targetMinChars ?? 0} and ${limit.targetMaxChars} characters including spaces, the report link, hashtags and the closing question. At most 20 characters outside that range is tolerated; anything more is rejected. Count your characters before replying. If you are over, cut the least important supported insight or sentence rather than trimming words everywhere.${overBy > 0 ? ` The current draft is about ${input.previousDraft!.length} characters, so remove about ${overBy} characters.` : ''}`;
   const prompt = [
     built.prompt,
-    ...(input.instructions ? [`\n## SUPERVISOR INSTRUCTIONS FOR THIS ATTEMPT\n${input.instructions}\nFollow them without adding any fact that is not in the evidence above. Evidence, hard validation and the house format take precedence over conflicting style suggestions.`] : []),
+    ...(input.instructions ? [`\n## SUPERVISOR INSTRUCTIONS FOR THIS ATTEMPT\n${input.instructions}\nFollow them without adding any fact that is not in the evidence above. ${free ? 'Evidence and the stated requirements (character limit, Ken Research mention, report link) take precedence over style suggestions.' : 'Evidence, hard validation and the house format take precedence over conflicting style suggestions.'}`] : []),
     ...(input.previousDraft ? [
       '\n## TARGETED EDIT OF THE CURRENT DRAFT',
-      'Edit only the listed blockers; preserve compliant paragraphs and supported claims. Keep the selected format and its question count. Do not undo earlier corrections or invent an industry assumption.',
+      `Edit only the listed blockers; preserve compliant paragraphs and supported claims. ${free ? "Keep the post's own structure." : 'Keep the selected format and its question count.'} Do not undo earlier corrections or invent an industry assumption.`,
       `CURRENT DRAFT:\n${input.previousDraft}`,
     ] : []),
     lengthRule,

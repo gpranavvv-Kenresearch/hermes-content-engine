@@ -14,7 +14,7 @@ import { config } from '../fixtures/validation/helpers.js';
  * a Ken Research link with the LinkedIn UTM (the original used a lnkd.in short link).
  */
 const original = readFileSync(new URL('../fixtures/style/linkedin-reference.txt', import.meta.url), 'utf8').trimEnd();
-const LINK = 'https://www.kenresearch.com/australia-athletic-apparel-and-footwear-market?utm_source=linkedin&utm_medium=referral&utm_campaign=automation';
+const LINK = 'https://www.kenresearch.com/australia-athletic-apparel-and-footwear-market?utm_source=linkedinpost&utm_medium=referral&utm_campaign=automation';
 const post = original.replace('https://lnkd.in/gBXj7Rds', LINK);
 
 // The two figures the reference post states, as verified facts, so the numeric checker has something to match.
@@ -78,7 +78,7 @@ describe('the reference LinkedIn post', () => {
   });
 
   it('the same layout is accepted on Facebook (assumed to share the house style)', () => {
-    const fb = post.replace('utm_source=linkedin', 'utm_source=facebook') + ' #A #B #C #D #E';
+    const fb = post.replace('utm_source=linkedinpost', 'utm_source=facebook') + ' #A #B #C #D #E';
     expect(run(fb, 'facebook').issues.filter((i) => i.severity === 'hard_fail')).toEqual([]);
   });
 

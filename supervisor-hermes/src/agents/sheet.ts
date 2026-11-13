@@ -1,5 +1,6 @@
 import { pickNextRow, writeGeneratedPost, type SheetsApi } from '../../../src/sheets/social-sheet.js';
 import { choosePrimaryKeyword } from '../../../src/social/runner.js';
+import { isFreeTextPlatform, marketNameFromTitle } from '../../../src/social/free-mode.js';
 import type { AgentReport, SocialPlatform } from '../types.js';
 
 export interface SheetPickOutput {
@@ -11,7 +12,12 @@ export interface SheetPickOutput {
 
 const KEYWORD_COLUMNS = ['primary keyword', 'seo keyword', 'seokeywords', 'keyword', 'keywords'];
 
-export function titleFromSheet(title: string): string {
+export function titleFromSheet(title: string, platform?: string): string {
+  // Free-format Facebook/LinkedIn text: the market name only, keeping the word "Market" (no "Market Share, Companies & Trends Report 2025-2032").
+  if (platform && isFreeTextPlatform(platform)) {
+    const market = marketNameFromTitle(title);
+    if (market) return market;
+  }
   return title.replace(/\b(?:Market Share|Market Size|Companies|Trends|Forecast|Outlook|Analysis|Report)\b.*$/i, '').replace(/\s+/g, ' ').trim() || title.trim();
 }
 
@@ -26,7 +32,7 @@ function keywordFromRow(rows: string[][], rowIndex: number): string | undefined 
 export function pickRowAgent(rows: string[][], platform: SocialPlatform, exclude: ReadonlySet<number>, keywordOverride?: string): AgentReport<SheetPickOutput> | null {
   const pick = pickNextRow(rows, platform, undefined, { skipGenerated: true, exclude });
   if (!pick) return null;
-  const title = titleFromSheet(pick.title);
+  const title = titleFromSheet(pick.title, platform);
   const keyword = choosePrimaryKeyword(title, keywordOverride ?? keywordFromRow(rows, pick.rowIndex));
   return {
     agent: 'sheet',
@@ -40,7 +46,7 @@ export function pickRowAgent(rows: string[][], platform: SocialPlatform, exclude
 export function pickFixedRowAgent(rows: string[][], platform: SocialPlatform, row: number, keywordOverride?: string): AgentReport<SheetPickOutput> | null {
   const pick = pickNextRow(rows, platform, row);
   if (!pick) return null;
-  const title = titleFromSheet(pick.title);
+  const title = titleFromSheet(pick.title, platform);
   const keyword = choosePrimaryKeyword(title, keywordOverride ?? keywordFromRow(rows, pick.rowIndex));
   return {
     agent: 'sheet',

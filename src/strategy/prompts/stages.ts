@@ -7,6 +7,9 @@ import {
   formattingSection,
   hookSection,
   layoutSection,
+  freePromptFor,
+  fillFreePrompt,
+  freeEvidenceText,
   discussionQuestionSection,
   styleExamplesSection,
   techniquesSection,
@@ -31,7 +34,7 @@ import {
 type BriefView = Pick<Brief, 'angle' | 'keywords' | 'beatPoints'>;
 
 function briefSection(brief: BriefView, itemTitle?: string, platform?: PromptContext['platform']): string {
-  const lines = [`Angle: ${brief.angle}`];
+  const lines = freePromptFor(platform ?? 'x') ? [] : [`Angle: ${brief.angle}`];
   if (itemTitle) lines.unshift(`Report topic: ${itemTitle}`);
   if (brief.keywords.length > 0) {
     lines.push(`Primary keyword: ${brief.keywords[0]}. Use this phrase naturally in the visible post body, not only in hashtags or the URL.`);
@@ -44,6 +47,11 @@ function briefSection(brief: BriefView, itemTitle?: string, platform?: PromptCon
 }
 
 function common(ctx: PromptContext, config = resolveConfig(ctx)): string[] {
+  const free = freePromptFor(ctx.platform);
+  if (free) {
+    // Free-format experiment: the prompt file is the whole brief. Placeholders {{PLATFORM}} {{TITLE}} {{URL}} {{EVIDENCE}} are filled here.
+    return [fillFreePrompt(free, { platform: ctx.platform, title: (ctx as { itemTitle?: string }).itemTitle ?? '', url: ctx.reportUrl, evidence: freeEvidenceText(ctx.facts, ctx.notes) })];
+  }
   const layout = layoutSection(config, ctx.platform, ctx.layout);
   const discussion = discussionQuestionSection(ctx.platform, `${ctx.reportUrl}|${ctx.tone}|${ctx.layout ?? ''}`);
   // Only the selected LinkedIn format enters the prompt, without the old reference
@@ -180,20 +188,22 @@ export function buildDraftPrompt(input: DraftInput): BuiltPrompt {
   const task = [
     '## TASK',
     `Write the ${input.platform} text now. It is a finished piece that can be published as is.`,
-    'Follow the tone, opener, structure and length above. Stay inside the platform hard cap.',
+    freePromptFor(input.platform) ? 'Follow the BRIEF. Stay inside the platform hard cap.' : 'Follow the tone, opener, structure and length above. Stay inside the platform hard cap.',
   ].join('\n');
   const outline = input.outlineText ? [`## APPROVED OUTLINE\n${input.outlineText}`] : [];
-  const direction = [
+  const free = freePromptFor(input.platform) !== null;
+  const direction = free ? [] : [
     ...(input.angle ? [angleSection(input.angle, input.angle.primaryNotes)] : []),
     ...(input.hook && !fixedLayout ? [hookSection(input.hook)] : []),
   ];
+  if (free) return { prompt: join([...common(input, config), outputSection()]), promptVersion: promptVersionFor(config, 'draft') };
   return {
     prompt: join([
       ...common(input, config),
       briefSection(input.brief, input.itemTitle, input.platform),
       ...direction,
-      variantSection,
-      ...outline,
+      ...(free ? [] : [variantSection]),
+      ...(free ? [] : outline),
       task,
       linkSection(sourceLink(input, config)),
       outputSection(),

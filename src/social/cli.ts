@@ -10,6 +10,9 @@ import { VariationHistory } from '../strategy/variation.js';
 import { shortHash } from '../utils/hash.js';
 import { choosePrimaryKeyword, runSocialJob, storeRoot, type BrainChoice, type SocialPlatform } from './runner.js';
 import { loadLessons } from './learning.js';
+import { enableFreeTextMode, isFreeTextPlatform, marketNameFromTitle } from './free-mode.js';
+
+enableFreeTextMode(); // Facebook/LinkedIn text: free-format prompt by default (HCE_FREE_PROMPT=off to disable)
 
 type Args = { command: string; values: Map<string, string>; flags: Set<string> };
 
@@ -48,7 +51,12 @@ function brain(value: string | undefined): BrainChoice {
   throw new Error('Use --brain hermes, ollama or chain.');
 }
 
-function titleFromSheet(title: string): string {
+function titleFromSheet(title: string, platform?: string): string {
+  // Free-format Facebook/LinkedIn text: the market name only, keeping the word "Market".
+  if (platform && isFreeTextPlatform(platform)) {
+    const market = marketNameFromTitle(title);
+    if (market) return market;
+  }
   return title.replace(/\b(?:Market Share|Market Size|Companies|Trends|Forecast|Outlook|Analysis|Report)\b.*$/i, '').replace(/\s+/g, ' ').trim() || title.trim();
 }
 
@@ -130,7 +138,7 @@ async function next(args: Args): Promise<void> {
   while (approved.length < count && skipped < maxRows && failures < maxFailures) {
     const pick = pickNextRow(rows, p, requestedRow, { skipGenerated: !requestedRow, exclude });
     if (!pick) { console.log(`No pending ${p} row found.`); break; }
-    const title = titleFromSheet(pick.title);
+    const title = titleFromSheet(pick.title, p);
     const keyword = choosePrimaryKeyword(title, args.values.get('keyword') ?? keywordFromRow(rows, pick.rowIndex));
     console.log(`\n[${approved.length + 1}/${count}] Sheet row ${pick.rowIndex}: ${title}`);
     // Whatever the outcome, this row is not picked again in this run (a local draft leaves the Post cell empty).

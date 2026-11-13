@@ -136,7 +136,20 @@ export function limitSelectiveBold(text: string, requiredBrand?: string): string
   });
 }
 
+/**
+ * Free-format experiment (HCE_FREE_PROMPT_FILE): the writer's text is normalised deterministically.
+ * Em/en dashes become commas/hyphens, and every brand mention, currency amount, percentage and
+ * "N units" figure is bolded (URLs untouched). Returns markdown bold, converted to Unicode by applyBold.
+ */
+export function freeModeNormalise(text: string, brandName: string): string {
+  const clean = stripMarkdownBold(fromUnicodeBold(text)).replace(/\s*—\s*/g, ', ').replace(/–/g, '-');
+  const brand = brandName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`(${brand})|((?:USD|US\\$|\\$)\\s?\\d[\\d,]*(?:\\.\\d+)?(?:\\s?(?:billion|million|trillion|bn|mn))?)|(\\d+(?:\\.\\d+)?\\s?(?:%|percent))|(\\d[\\d,]*\\s?units)`, 'gi');
+  return clean.split(/(https?:\/\/\S+)/).map((p, i) => (i % 2 ? p : p.replace(re, (m) => `**${m}**`))).join('');
+}
+
 export function applyBold(text: string, formatting: Pick<BoldFormatting, 'boldBrand' | 'boldFigures' | 'selectiveBold'>, brandName = 'Ken Research'): string {
+  if (process.env.HCE_FREE_PROMPT_FILE?.trim() && formatting.boldBrand) return markdownBoldToUnicode(freeModeNormalise(text, brandName));
   if (formatting.selectiveBold) return markdownBoldToUnicode(limitSelectiveBold(text, formatting.boldBrand ? brandName : undefined));
   return formatting.boldBrand || formatting.boldFigures ? markdownBoldToUnicode(text) : fromUnicodeBold(stripMarkdownBold(text));
 }

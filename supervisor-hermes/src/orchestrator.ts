@@ -1,5 +1,6 @@
 import { ShutdownError } from '../../src/errors.js';
 import { layoutSection, platformSection } from '../../src/strategy/prompts/common.js';
+import { isFreeTextPlatform } from '../../src/social/free-mode.js';
 import type { AgentDeps } from './agents/deps.js';
 import { runEvidenceAgent, usableFacts, type EvidenceOutput } from './agents/evidence.js';
 import { runLearningAgent } from './agents/learning.js';
@@ -156,6 +157,17 @@ export async function processRow(job: RowJob, ctx: RowContext): Promise<RowResul
     return outcome.decision;
   };
 
+  // Free-format Facebook/LinkedIn text: only the evidence gate asks Hermes. The strategy, draft and final gates judge against the old
+  // house format, so code decides instead: the draft proceeds when the validator (character limit, link, bold Ken Research, bold
+  // statistics, no em dashes) passed; otherwise the row stops for a human.
+  const freeText = isFreeTextPlatform(platform);
+  const auto = async (g: Gate, ok: boolean, why: string): Promise<Decision> => {
+    const d: Decision = { gate: g, action: ok ? 'proceed' : 'stop', reason: (why || (ok ? 'code checks passed' : 'validation failed')).slice(0, 400), concerns: [] };
+    await ledger.append({ type: 'decision', gate: g, data: { requested: d, final: d, overridden: false, failedClosed: false, auto: 'free-format text' } });
+    decisions.push(d);
+    return d;
+  };
+
   try {
     // --- gate 1: evidence -------------------------------------------------------------------
     const evReport = await track(await agents.evidence({ url: pick.url, title: pick.title, supplementary: job.supplementary }, deps));
@@ -183,7 +195,7 @@ export async function processRow(job: RowJob, ctx: RowContext): Promise<RowResul
     outer: for (;;) {
       // --- gate 2: strategy -----------------------------------------------------------------
       let strat = await track(await agents.strategy({ item, evidence: ev, platform, keyword: pick.keyword, attempt }, deps));
-      let dS = await gate('strategy', [evReport, strat], strategyMaterial(strat.summary, ev), evFacts);
+      let dS = freeText ? await auto('strategy', true, 'free-format text: no strategy review') : await gate('strategy', [evReport, strat], strategyMaterial(strat.summary, ev), evFacts);
       while (dS.action === 'retry') {
         if (!deps.limits.canRetry()) return await finish('needs_human', `strategy gate: retries exhausted (${dS.reason})`);
         deps.limits.useRetry();
@@ -227,11 +239,13 @@ export async function processRow(job: RowJob, ctx: RowContext): Promise<RowResul
           await agents.validator({ item, evidence: ev, strategy: strat.output, draft: written.output, platform, keyword: pick.keyword, minUsefulWords: MIN_USEFUL_WORDS[platform], ...(writerInstructions ? { instructions: writerInstructions } : {}) }, deps),
         );
         lastValidator = vReport;
-        const dD = await gate('draft', [evReport, strat, written, vReport], draftMaterial(vReport.output, ev, houseFormat), {
-          ...evFacts,
-          validatorPassed: vReport.output.passed,
-          hardFails: vReport.output.hardFails,
-        });
+        const dD = freeText
+          ? await auto('draft', vReport.output.passed, vReport.output.passed ? 'free-format text: validator passed' : `free-format text: ${vReport.output.reason}`)
+          : await gate('draft', [evReport, strat, written, vReport], draftMaterial(vReport.output, ev, houseFormat), {
+              ...evFacts,
+              validatorPassed: vReport.output.passed,
+              hardFails: vReport.output.hardFails,
+            });
         // Keep every draft and why it was accepted or rejected, so a rejected post can be read later.
         draftNo++;
         try {
@@ -264,11 +278,13 @@ export async function processRow(job: RowJob, ctx: RowContext): Promise<RowResul
 
     // --- gate 4: final (the learning agent runs inside finish, with the real status) --------
     const v = validatorReport!.output;
-    const dF = await gate('final', [validatorReport!], draftMaterial(v, ev, houseFormat), {
-      ...evFacts,
-      validatorPassed: v.passed,
-      hardFails: v.hardFails,
-    });
+    const dF = freeText
+      ? await auto('final', v.passed, 'free-format text: validator passed')
+      : await gate('final', [validatorReport!], draftMaterial(v, ev, houseFormat), {
+          ...evFacts,
+          validatorPassed: v.passed,
+          hardFails: v.hardFails,
+        });
     if (dF.action !== 'proceed') return await finish('needs_human', `final gate: ${dF.reason}`, v.text, v.score);
 
     // --- Sheet write: only after every gate, only when asked ---------------------------------

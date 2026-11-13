@@ -30,8 +30,6 @@ const PLATFORM_COLUMNS: Record<SheetPlatform, { postUrl: string[]; status: strin
   tumblr: { postUrl: ['Tumblr Post URL'], status: ['Tumblr Status'], post: ['Tumblr Post'], label: 'Tumblr' },
 };
 
-const PROCESSED_STATUSES = new Set(['posted', 'failed', 'error']);
-
 export interface SheetPick {
   /** 1-based row number in the sheet. */
   rowIndex: number;
@@ -78,8 +76,9 @@ export interface PickOptions {
 }
 
 /**
- * Pure picking logic (rows include the header row at index 0). Returns the next row for `platform`, or null
- * when every row after the last processed one is empty or processed. `from` forces a specific 1-based row.
+ * Pure picking logic (rows include the header row at index 0). Returns the first row, from the top, whose Status and
+ * Post URL cells for `platform` are both empty, or null when there is none. Each platform is checked on its own
+ * columns. `from` forces a specific 1-based row.
  */
 export function pickNextRow(rows: readonly (readonly string[])[], platform: SheetPlatform, from?: number, options: PickOptions = {}): SheetPick | null {
   const headers = rows[0] ?? [];
@@ -94,8 +93,8 @@ export function pickNextRow(rows: readonly (readonly string[])[], platform: Shee
     throw new EngineError(`No ${cols.label} status or post-URL column found (looked for ${[...cols.status, ...cols.postUrl].join(', ')}).`, 'fatal', 'SHEET_COLUMNS');
   }
   const cell = (row: readonly string[], i: number): string => (i >= 0 ? (row[i] ?? '').trim() : '');
-  const processed = (row: readonly string[]): boolean =>
-    cell(row, postUrlIdx) !== '' || PROCESSED_STATUSES.has(cell(row, statusIdx).toLowerCase());
+  // A row is open for this platform only while its Status and Post URL cells are both empty.
+  const processed = (row: readonly string[]): boolean => cell(row, postUrlIdx) !== '' || cell(row, statusIdx) !== '';
 
   if (from !== undefined) {
     const row = rows[from - 1];
@@ -104,9 +103,7 @@ export function pickNextRow(rows: readonly (readonly string[])[], platform: Shee
     return url ? { rowIndex: from, title: cell(row, titleIdx), url } : null;
   }
 
-  let last = 0;
-  for (let i = 1; i < rows.length; i++) if (processed(rows[i]!)) last = i;
-  for (let i = last + 1; i < rows.length; i++) {
+  for (let i = 1; i < rows.length; i++) {
     const row = rows[i]!;
     const url = cell(row, urlIdx);
     if (!url || processed(row)) continue;

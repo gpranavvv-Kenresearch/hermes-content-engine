@@ -11,15 +11,17 @@ const rows = [
 ];
 
 describe('pickNextRow', () => {
-  it('picks the first row after the last processed one, per platform', () => {
+  it('picks the first row from the top whose own Status and Post URL are empty, per platform', () => {
     expect(pickNextRow(rows, 'x')).toEqual({ rowIndex: 4, title: 'C', url: 'https://www.kenresearch.com/c' });
-    expect(pickNextRow(rows, 'facebook')).toEqual({ rowIndex: 4, title: 'C', url: 'https://www.kenresearch.com/c' });
+    expect(pickNextRow(rows, 'facebook')).toEqual({ rowIndex: 2, title: 'A', url: 'https://www.kenresearch.com/a' });
     expect(pickNextRow(rows, 'linkedin')).toEqual({ rowIndex: 2, title: 'A', url: 'https://www.kenresearch.com/a' });
   });
 
-  it('does not go back to an empty row above the last processed one', () => {
+  it('goes back to an empty row above a processed one, and treats any status text as taken', () => {
     const gap = [H, ['A', 'https://k/a', '', '', '', '', '', ''], ['B', 'https://k/b', 'Posted', '', '', '', '', '']];
-    expect(pickNextRow(gap, 'x')).toBeNull();
+    expect(pickNextRow(gap, 'x')?.rowIndex).toBe(2);
+    const taken = [H, ['A', 'https://k/a', 'Queued', '', '', '', '', ''], ['B', 'https://k/b', '', '', '', '', '', '']];
+    expect(pickNextRow(taken, 'x')?.rowIndex).toBe(3);
   });
 
   it('returns null when nothing is left, and honours an explicit row', () => {

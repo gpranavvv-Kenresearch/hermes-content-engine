@@ -54,7 +54,8 @@ export interface BlogState {
 }
 
 /** Hours before a failed row is tried again: 6, 12, 24. After 3 failed attempts the row is parked until a human asks. */
-const RETRY_HOURS = [6, 12, 24];
+// A failed row is retried straight away so the Sheet cell gets its content before the engine moves on; only 5 straight failures park it.
+const RETRY_HOURS = [0, 0, 0, 0.05, 0.1];
 export const MAX_ATTEMPTS = RETRY_HOURS.length;
 const TRANSIENT_LIMIT = 4;
 const TRANSIENT_COOLDOWN_MS = 20 * 60_000;
@@ -112,11 +113,12 @@ export class BlogStateStore {
     return now >= s.nextEligibleAt;
   }
 
+  /** Makes every row that has no Sheet content yet (parked, skipped or needs_human) eligible again. Saved approved drafts are reused, not rewritten. */
   async unpark(): Promise<number> {
     const state = await this.load();
     let n = 0;
     for (const s of Object.values(state.rows)) {
-      if (s.status === 'parked') { s.status = 'skipped'; s.attempts = 0; s.nextEligibleAt = 0; n++; }
+      if (s.status === 'parked' || s.status === 'skipped' || s.status === 'needs_human') { s.status = 'skipped'; s.attempts = 0; s.nextEligibleAt = 0; delete s.transient; n++; }
     }
     await atomicWriteJson(this.stateFile, state);
     return n;

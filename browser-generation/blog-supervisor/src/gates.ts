@@ -6,6 +6,7 @@ export interface BlogGateFacts {
   /** Structural garbage found by code (no H1, fewer than 3 H2s, unfilled template, and so on). */
   hardFails: readonly string[];
   revisionsLeft: number;
+  patchesLeft?: number;
   regenerationsLeft: number;
 }
 
@@ -27,6 +28,16 @@ export function enforceBlogGate(decision: BlogDecision, facts: BlogGateFacts): B
   if (facts.gate === 'evidence') {
     if (!facts.reportPageLoaded) return override('stop', 'the report page did not load, so no article may be written for this report');
     if (decision.action !== 'proceed' && decision.action !== 'stop') return override('stop', 'evidence cannot be retried');
+  }
+
+  if (decision.action === 'patch' && facts.gate !== 'draft') {
+    return facts.gate === 'structure' ? override('retry', 'only the draft gate can patch the article') : override('stop', 'only the draft gate can patch the article');
+  }
+
+  if (facts.gate === 'draft' && decision.action === 'patch' && ((facts.patchesLeft ?? 1) <= 0 || !(decision.edits?.length || decision.seoTitle || decision.metaDescription))) {
+    const why = (facts.patchesLeft ?? 1) <= 0 ? 'no direct patches are left' : 'the patch had no edits';
+    if (facts.revisionsLeft > 0) return override('retry', why);
+    return facts.regenerationsLeft > 0 ? override('regenerate', why) : override('stop', why);
   }
 
   if (facts.gate === 'structure') {

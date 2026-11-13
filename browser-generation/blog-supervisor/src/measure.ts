@@ -52,6 +52,8 @@ export interface BlogMeasurements {
   /** Bold numbers in the article that do not appear anywhere in the report evidence (government-sourced ones can be legitimate). */
   figuresNotInEvidence: string[];
   h1HasBoldKenResearch: boolean;
+  /** The first paragraph after the H1 names Ken Research. */
+  firstParagraphMentionsKen: boolean;
 }
 
 const ENTITIES: Record<string, string> = { '&nbsp;': ' ', '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&ndash;': '–', '&mdash;': '—' };
@@ -292,6 +294,7 @@ export function measureBlog(input: {
       list: links,
     },
     h1HasBoldKenResearch: /<h1[^>]*>[\s\S]*?<strong>\s*Ken Research\s*<\/strong>[\s\S]*?<\/h1>/i.test(html),
+    firstParagraphMentionsKen: /Ken Research/i.test(/<\/h1>[\s\S]*?<p[^>]*>([\s\S]*?)<\/p>/i.exec(html)?.[1]?.replace(/<[^>]+>/g, '') ?? ''),
     seoTitle: seoTitle === undefined ? null : { length: seoTitle.length, equalsH1: !!h1Text && h1Text.toLowerCase() === seoTitle.toLowerCase(), containsKenResearch: /ken research/i.test(seoTitle) },
     metaDescription: input.metaDescription === undefined ? null : { length: input.metaDescription.trim().length },
     figuresNotInEvidence,
@@ -314,6 +317,7 @@ export function structuralHardFails(m: BlogMeasurements): string[] {
 export function v13RuleFails(m: BlogMeasurements): string[] {
   const fails: string[] = [];
   if (!m.h1HasBoldKenResearch) fails.push('the H1 must contain <strong>Ken Research</strong>');
+  if (!m.firstParagraphMentionsKen) fails.push('the first paragraph under the H1 must name <strong>Ken Research</strong> as the source of the findings');
   if (m.kenResearch.unbolded > 0) fails.push(`${m.kenResearch.unbolded} "Ken Research" mention(s) are not bold`);
   if (m.seoTitle?.containsKenResearch) fails.push('the SEO Title must not contain "Ken Research"');
   if (m.links.kenHomepage !== 1) fails.push(`${m.links.kenHomepage} Ken Research homepage links (needs exactly 1, in the first paragraph)`);

@@ -5,6 +5,9 @@ import { formatMeasurements, measureBlog, structuralHardFails, v13RuleFails } fr
 import type { BlogEvidence } from './evidence.js';
 import type { BlogSupervisor, BlogLimits } from './supervisor.js';
 import type { BlogLedger, BlogStateStore } from './state.js';
+import { applyPatch } from './patch.js';
+import { enforceBrandAndFigureBold } from './bold.js';
+import { freeHardFails, isFreeStructure, normaliseFreeBlog } from './free.js';
 import type { BlogDecision, BlogGate, BlogRowResult } from './types.js';
 
 export interface BlogRowInput {
@@ -26,6 +29,8 @@ export interface FinishArticleParams {
   title: string;
   coverImageUrl: string;
   row: BlogRowInput;
+  /** Structure the article was written with; 'free-v2' skips the snapshot/landscape images (the header image and the preferred-source CTA are still added). */
+  structure?: string;
 }
 
 export interface BlogRowDeps {
@@ -79,9 +84,9 @@ export async function processBlogRow(row: BlogRowInput, deps: BlogRowDeps): Prom
     rowIndex: row.rowIndex, title: row.title, status, reason, structure, gates,
   });
 
-  const gate = async (name: BlogGate, material: string, facts: Omit<BlogGateFacts, 'gate' | 'revisionsLeft' | 'regenerationsLeft'> ): Promise<BlogDecision> => {
+  const gate = async (name: BlogGate, material: string, facts: Omit<BlogGateFacts, 'gate' | 'revisionsLeft' | 'patchesLeft' | 'regenerationsLeft'> ): Promise<BlogDecision> => {
     const asked = await supervisor.decide({ gate: name, material, history, limitsNote: limits.note() });
-    const out = enforceBlogGate(asked.decision, { ...facts, gate: name, revisionsLeft: limits.revisionsLeft, regenerationsLeft: limits.regenerationsLeft });
+    const out = enforceBlogGate(asked.decision, { ...facts, gate: name, revisionsLeft: limits.revisionsLeft, patchesLeft: limits.patchesLeft, regenerationsLeft: limits.regenerationsLeft });
     history.push(out.decision);
     gates.push({ gate: name, action: out.decision.action, reason: out.decision.reason });
     await ledger.append('decision', {
@@ -154,6 +159,19 @@ export async function processBlogRow(row: BlogRowInput, deps: BlogRowDeps): Prom
     try {
       blog = await session.generate();
       for (;;) {
+        if (isFreeStructure(structure)) {
+          // Free mode: code fixes dashes, extra text and bold itself; no Hermes draft gate, no link-plan or H2-count rules.
+          blog = normaliseFreeBlog(blog);
+          const freeFails = freeHardFails(blog);
+          await ledger.append('draft', { summary: `free-v2 draft normalised (${blog.html.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length} words)`, hardFails: freeFails });
+          if (freeFails.length > 0 && limits.revisionsLeft > 0) {
+            limits.revisions++;
+            blog = await session.revise(buildReviseInstruction(freeFails.join('\n')));
+            continue;
+          }
+          break;
+        }
+        blog = { ...blog, html: enforceBrandAndFigureBold(blog.html) };
         const m = measureBlog({ html: blog.html, seoTitle: blog.seoTitle, metaDescription: blog.description, primaryUrl: ev.finalUrl, evidenceText: ev.evidenceText });
         const hard = [...structuralHardFails(m), ...(limits.revisionsLeft > 0 ? v13RuleFails(m) : [])];
         await ledger.append('draft', { summary: `${m.words} words, ${m.headings.h2} H2, ${m.links.total} links`, hardFails: hard });
@@ -170,6 +188,21 @@ export async function processBlogRow(row: BlogRowInput, deps: BlogRowDeps): Prom
 
         if (d.action === 'proceed') break;
         if (d.action === 'stop') return result('needs_human', `draft gate: ${d.reason}`);
+        if (d.action === 'patch') {
+          limits.patches++;
+          const patched = applyPatch(blog, d);
+          if (patched.ok) {
+            blog = { ...blog, ...patched.blog };
+            await ledger.append('patch', { summary: `Hermes corrected the article directly (${patched.applied} edit(s)); checking it again.` });
+            continue;
+          }
+          await ledger.append('patch', { summary: `Hermes patch refused: ${patched.error}.` });
+          if (limits.revisionsLeft > 0) {
+            limits.revisions++;
+            blog = await session.revise(buildReviseInstruction(d.instructions?.trim() || d.reason));
+          }
+          continue;
+        }
         if (d.action === 'retry') {
           limits.revisions++;
           blog = await session.revise(buildReviseInstruction(d.instructions?.trim() || d.reason));
@@ -192,13 +225,15 @@ export async function processBlogRow(row: BlogRowInput, deps: BlogRowDeps): Prom
   }
 
   // ---- images, image tags and the preferred-source call to action
-  const html = await deps.finishArticle({ blog: draft.blog, title: draft.title, coverImageUrl: draft.coverImageUrl, row });
+  const html = enforceBrandAndFigureBold(await deps.finishArticle({ blog: draft.blog, title: draft.title, coverImageUrl: draft.coverImageUrl, row, structure: draft.structure }));
 
+  if (!isFreeStructure(draft.structure)) {
   // ---- gate 4: final (proceed or stop only)
-  const fm = measureBlog({ html, seoTitle: draft.blog.seoTitle, metaDescription: draft.blog.description, primaryUrl: draft.finalUrl, evidenceText: draft.evidenceText });
+  const fm =measureBlog({ html, seoTitle: draft.blog.seoTitle, metaDescription: draft.blog.description, primaryUrl: draft.finalUrl, evidenceText: draft.evidenceText });
   const fhard = [...structuralHardFails(fm), ...(fm.imagePlaceholders > 0 ? [`${fm.imagePlaceholders} unresolved image placeholder(s)`] : [])];
   const fd = await gate('final', [`CODE MEASUREMENTS (assembled article)\n${formatMeasurements(fm)}`, fhard.length ? `\nSTRUCTURAL PROBLEMS FOUND BY CODE\n${fhard.join('\n')}` : '', `\nARTICLE HTML\n${html}`].join('\n'), { reportPageLoaded: true, hardFails: fhard });
   if (fd.action !== 'proceed') return result('needs_human', `final gate: ${fd.reason}`);
+  }
 
   // ---- save and read back
   for (let attempt = 1; attempt <= 2; attempt++) {

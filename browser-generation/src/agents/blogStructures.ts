@@ -73,7 +73,7 @@ export const FORMATS_DIR = path.resolve('browser-generation/prompts/blog-generat
 export const MASTER_V13_FILE = path.resolve('browser-generation/prompts/blog-generation/01-master-v1.3-live.txt');
 const usageFile = () => process.env.BLOG_STRUCTURE_USAGE_FILE || path.resolve('.sessions/blog-structure-usage.json');
 
-export type StructureFamily = 'architecture' | 'format';
+export type StructureFamily = 'architecture' | 'format' | 'free';
 
 export interface StructureInfo {
   id: string;
@@ -89,8 +89,18 @@ export const STRUCTURE_CATALOG: readonly StructureInfo[] = [
   ...BLOG_FORMATS.map((f): StructureInfo => ({ id: f.id, label: f.label, family: 'format', summary: f.spec })),
 ];
 
+/** Opt-in, outside every rotation pool: the free prompt (no template; code enforces only em dashes, extra text, bold Ken Research and bold stats). */
+export const FREE_V2_ID = 'free-v2';
+export const FREE_V2_FILE = path.resolve('browser-generation/prompts/blog-generation/free/blog-free-v2.txt');
+const FREE_V2_INFO: StructureInfo = {
+  id: FREE_V2_ID,
+  label: 'Free v2 (no template)',
+  family: 'free',
+  summary: 'No predefined template: the writer decides audience, tone, structure, H2 count and links. Only em dashes, extra text, bold Ken Research and bold statistics are enforced by code.',
+};
+
 export function describeStructure(id: string): StructureInfo | undefined {
-  return STRUCTURE_CATALOG.find((s) => s.id === id);
+  return id === FREE_V2_ID ? FREE_V2_INFO : STRUCTURE_CATALOG.find((s) => s.id === id);
 }
 
 export function idsInFamily(family: StructureFamily): string[] {
@@ -98,6 +108,7 @@ export function idsInFamily(family: StructureFamily): string[] {
 }
 
 export function structureFile(id: string): string {
+  if (id === FREE_V2_ID) return FREE_V2_FILE;
   return path.join(describeStructure(id)?.family === 'format' ? FORMATS_DIR : STRUCTURES_DIR, `${id}.txt`);
 }
 
@@ -148,8 +159,9 @@ export function chooseStructure(mode: string = process.env.BLOG_STRUCTURE || DEF
     return picked;
   }
   if (!describeStructure(wanted)) {
-    throw new Error(`Unknown BLOG_STRUCTURE "${mode}". Use v1.3, rotate, random, rotate-formats, random-formats, rotate-all, random-all or one of: ${STRUCTURE_CATALOG.map((s) => s.id).join(', ')}`);
+    throw new Error(`Unknown BLOG_STRUCTURE "${mode}". Use v1.3, rotate, random, rotate-formats, random-formats, rotate-all, random-all or one of: ${[...STRUCTURE_CATALOG.map((s) => s.id), FREE_V2_ID].join(', ')}`);
   }
+  if (wanted === FREE_V2_ID) return wanted;
   recordUse(wanted);
   return wanted;
 }

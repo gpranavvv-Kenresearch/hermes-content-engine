@@ -25,6 +25,7 @@ import { gatherBlogEvidence } from './evidence.js';
 import { formatMeasurements, measureBlog } from './measure.js';
 import { processBlogRow, type BlogRowDeps } from './orchestrator.js';
 import { PREVIEW_CSS, resolveTarget } from './sample.js';
+import { assembleFreeHtml, isFreeStructure } from './free.js';
 import { BlogLedger, BlogStateStore } from './state.js';
 import { BlogLimits, BlogSupervisor, createBlogHermesAsk, loadBlogRole, type HermesAsk } from './supervisor.js';
 
@@ -179,7 +180,10 @@ export async function runFinal(opts: FinalOptions): Promise<string> {
           }),
         }
       : {}),
-    finishArticle: ({ blog, title, coverImageUrl }) => assembleLocal(blog, title, coverImageUrl, imgDir, (summary) => ledger.append('assemble', { summary }).catch(() => {})),
+    finishArticle: ({ blog, title, coverImageUrl, structure }) =>
+      isFreeStructure(structure)
+        ? Promise.resolve(assembleFreeHtml(blog, title, coverImageUrl ? `images/${path.basename(coverImageUrl)}` : '', (summary) => ledger.append('assemble', { summary }).catch(() => {})))
+        : assembleLocal(blog, title, coverImageUrl, imgDir, (summary) => ledger.append('assemble', { summary }).catch(() => {})),
     save: async (_row, data) => { finalHtml = data.html; finalBlog = data.blog; },
     verify: async () => ({ ok: true }),
     structureMode: opts.structure,
@@ -205,7 +209,7 @@ export async function runFinal(opts: FinalOptions): Promise<string> {
   await writeFile(path.join(runDir, 'final.html'), page, 'utf8');
   await writeFile(path.join(runDir, 'article-final.html'), finalHtml, 'utf8');
   await writeFile(path.join(runDir, 'measurements.txt'), formatMeasurements(m), 'utf8');
-  await writeFile(path.join(runDir, 'deliverable.txt'), `SEO TITLE\n${finalBlog.seoTitle}\n\nMETA DESCRIPTION\n${finalBlog.description}\n\nKEY SNAPSHOT METRICS\n${finalBlog.imageData}\n\nIMAGE 2 INSIGHTS\n${finalBlog.imageData2}\n`, 'utf8');
+  await writeFile(path.join(runDir, 'deliverable.txt'), `${finalBlog.publishingTitle ? `PUBLISHING TITLE\n${finalBlog.publishingTitle}\n\n` : ''}SEO TITLE\n${finalBlog.seoTitle}\n\nMETA DESCRIPTION\n${finalBlog.description}\n\nKEY SNAPSHOT METRICS\n${finalBlog.imageData}\n\nIMAGE 2 INSIGHTS\n${finalBlog.imageData2}\n`, 'utf8');
 
   const out = [
     `\n[FINAL] Done: ${m.words} words, ${m.headings.h2} H2, ${m.images} images. Gates: ${gateLines}`,

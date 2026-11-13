@@ -201,7 +201,7 @@ async function lastAssistantText(page: Page): Promise<string> {
 // — used to slice ChatGPT's structured reply into SEO Title / Meta
 // Description / Key Snapshot Metrics / FINAL ARTICLE HTML.
 const SECTION_LABELS = [
-  'SEO Title', 'Meta Description', 'Primary Search Intent', 'Primary Keyword',
+  'Publishing Title', 'SEO Title', 'Meta Description', 'Primary Search Intent', 'Primary Keyword',
   'Secondary Semantic Topics', 'Suggested Snapshot Image Alt',
   'Key Snapshot Metrics for Image', 'Key Qualitative Insights for Image 2',
   'Internal Link Map', 'External Source Map',
@@ -223,7 +223,10 @@ function extractLabeledSection(text: string, label: string): string {
 }
 
 export interface BlogGenResult {
+  /** The title for the publishing platform's title field. free-v2 articles return it as the "Publishing Title" section; every other structure uses the article H1 text. */
   title: string;
+  /** Raw "Publishing Title" section (free-v2 only); empty otherwise. */
+  publishingTitle?: string;
   description: string;
   html: string;
   seoTitle: string;
@@ -257,7 +260,7 @@ async function extractBlog(page: Page, fallbackTitle: string): Promise<BlogGenRe
     if (last) { const c = last.querySelector('pre code, pre'); code = c ? (c.textContent || '') : ''; }
     if (text.replace(/\s/g, '').length < 100) {
       const body = (document.body as HTMLElement).innerText || '';
-      const idx = body.lastIndexOf('SEO Title');
+      const idx = body.lastIndexOf('Publishing Title') >= 0 ? body.lastIndexOf('Publishing Title') : body.lastIndexOf('SEO Title');
       if (idx >= 0) text = body.slice(idx);
     }
     return { code, text };
@@ -283,6 +286,7 @@ async function extractBlog(page: Page, fallbackTitle: string): Promise<BlogGenRe
   // ChatGPT sometimes carries over from the article's bolding rules (its
   // chat UI shows raw HTML as visible text, not live tags, so it leaks
   // straight into these strings if not stripped here).
+  const publishingTitle = stripCitationChip(stripTags(extractLabeledSection(text, 'Publishing Title')));
   const seoTitle = stripCitationChip(stripTags(extractLabeledSection(text, 'SEO Title')));
   const metaDescription = stripCitationChip(stripTags(extractLabeledSection(text, 'Meta Description')));
   // Strip the "5–7 supported metrics" sub-label ChatGPT sometimes echoes as
@@ -324,10 +328,11 @@ async function extractBlog(page: Page, fallbackTitle: string): Promise<BlogGenRe
 
   const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
   const firstPMatch = html.match(/<p[^>]*>([\s\S]*?)<\/p>/i);
-  const blogTitle = h1Match ? stripFilePill(stripTags(h1Match[1])) : (seoTitle || fallbackTitle);
+  // A "Publishing Title" section (free-v2) is the platform title; every other structure uses the H1 text as before.
+  const blogTitle = publishingTitle || (h1Match ? stripFilePill(stripTags(h1Match[1])) : (seoTitle || fallbackTitle));
   const description = metaDescription || (firstPMatch ? stripTags(firstPMatch[1]).slice(0, 170) : '');
 
-  return { title: blogTitle, description, html, seoTitle: seoTitle || blogTitle, imageData, imageData2 };
+  return { title: blogTitle, ...(publishingTitle ? { publishingTitle } : {}), description, html, seoTitle: seoTitle || blogTitle, imageData, imageData2 };
 }
 
 // A popup can still land exactly while extractBlog() reads the DOM (race

@@ -14,6 +14,7 @@ import {
 } from '../../src/coordinator/blogGenLoop.js';
 import { saveCoverImageUrlToPool, saveGeneratedBlogToPool, saveNewLogicImageText } from '../../src/sheets/sheets.js';
 import { gatherBlogEvidence } from './evidence.js';
+import { assembleFreeHtml, isFreeStructure } from './free.js';
 import type { BlogLedger } from './state.js';
 import type { BlogRowDeps, FinishArticleParams } from './orchestrator.js';
 
@@ -30,7 +31,12 @@ export function createRealDeps(opts: RealDepsOptions): Pick<BlogRowDeps, 'eviden
   const config = loadConfig();
   const log = (summary: string) => opts.ledger.append('assemble', { summary }).catch(() => {});
 
-  const finishArticle = async ({ blog, title, coverImageUrl }: FinishArticleParams): Promise<string> => {
+  const finishArticle = async ({ blog, title, coverImageUrl, structure }: FinishArticleParams): Promise<string> => {
+    if (isFreeStructure(structure)) {
+      // free-v2: header image only (cover above the H1), no snapshot or landscape images and no preferred-source CTA.
+      await log('free-v2: header image and preferred-source CTA only, no snapshot/landscape images');
+      return assembleFreeHtml(blog, title, coverImageUrl, (summary) => log(summary));
+    }
     let html = moveImagesBelowFirstH2(blog.html);
     // Same order as blogGenLoop.ts: snapshot and landscape placeholders first, cover image last (it prepends).
     let snapshotMetrics: SnapshotMetric[] = [];

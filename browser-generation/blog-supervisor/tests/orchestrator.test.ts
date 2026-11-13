@@ -122,6 +122,24 @@ describe('processBlogRow', () => {
     expect(t.s.asked).toEqual(['evidence', 'draft', 'draft', 'final']);
   });
 
+  it('lets the supervisor correct the article itself without going back to ChatGPT', async () => {
+    const t = setup({ evidence: [proceed], draft: [{ action: 'patch', edits: [{ find: '<h1>', replace: '<h1 data-fixed="1">' }], seoTitle: 'Patched SEO title' }, proceed], final: [proceed] });
+    const r = await processBlogRow(row, t.deps);
+    expect(r.status).toBe('written');
+    expect(t.chats).toHaveLength(1);
+    expect(t.chats[0]!.revise).toHaveLength(0);
+    expect(t.saved[0]!.html).toContain('data-fixed="1"');
+    expect(t.s.asked).toEqual(['evidence', 'draft', 'draft', 'final']);
+  });
+
+  it('falls back to a same-chat fix when a patch cannot be applied', async () => {
+    const t = setup({ evidence: [proceed], draft: [{ action: 'patch', instructions: '1. Fix the figure.', edits: [{ find: 'text that is not in the article', replace: 'x' }] }, proceed], final: [proceed] });
+    const r = await processBlogRow(row, t.deps);
+    expect(r.status).toBe('written');
+    expect(t.chats[0]!.revise).toHaveLength(1);
+    expect(t.chats[0]!.revise[0]).toContain('1. Fix the figure.');
+  });
+
   it('falls back to the reason when the supervisor sends empty instructions', async () => {
     const t = setup({ evidence: [proceed], draft: [{ action: 'retry', instructions: '', reason: 'Paragraph 4 is 97 words.' }, proceed], final: [proceed] });
     await processBlogRow(row, t.deps);

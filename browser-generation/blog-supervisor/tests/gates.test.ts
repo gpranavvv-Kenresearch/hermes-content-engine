@@ -39,3 +39,20 @@ describe('enforceBlogGate', () => {
     expect(enforceBlogGate(d('final', 'proceed'), facts('final', { hardFails: ['1 unresolved image placeholder(s)'] })).decision.action).toBe('stop');
   });
 });
+
+describe('patch action', () => {
+  const edits = [{ find: 'a', replace: 'b' }];
+  it('is allowed at the draft gate while patches remain', () => {
+    expect(enforceBlogGate(d('draft', 'patch', { edits }), facts('draft', { patchesLeft: 2 })).decision.action).toBe('patch');
+  });
+  it('falls back to a same-chat fix, then a restart, then stop when no patch is possible', () => {
+    expect(enforceBlogGate(d('draft', 'patch', { edits }), facts('draft', { patchesLeft: 0 })).decision.action).toBe('retry');
+    expect(enforceBlogGate(d('draft', 'patch', { edits }), facts('draft', { patchesLeft: 0, revisionsLeft: 0 })).decision.action).toBe('regenerate');
+    expect(enforceBlogGate(d('draft', 'patch', { edits }), facts('draft', { patchesLeft: 0, revisionsLeft: 0, regenerationsLeft: 0 })).decision.action).toBe('stop');
+    expect(enforceBlogGate(d('draft', 'patch'), facts('draft', { patchesLeft: 2 })).decision.action).toBe('retry');
+  });
+  it('is not accepted at the other gates', () => {
+    expect(enforceBlogGate(d('final', 'patch', { edits }), facts('final')).decision.action).toBe('stop');
+    expect(enforceBlogGate(d('structure', 'patch', { edits }), facts('structure')).decision.action).toBe('retry');
+  });
+});

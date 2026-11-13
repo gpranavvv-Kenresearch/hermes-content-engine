@@ -9,6 +9,7 @@ export type HermesAsk = (prompt: string, purpose: string) => Promise<string>;
 export interface BlogLimitOptions {
   maxHermesCalls?: number;
   maxRevisions?: number;
+  maxPatches?: number;
   maxRegenerations?: number;
   maxStructureChanges?: number;
 }
@@ -17,19 +18,21 @@ export interface BlogLimitOptions {
 export class BlogLimits {
   readonly calls: Budget;
   revisions = 0;
+  patches = 0;
   regenerations = 0;
   structureChanges = 0;
   private readonly o: Required<BlogLimitOptions>;
 
   constructor(options: BlogLimitOptions = {}) {
-    this.o = { maxHermesCalls: 24, maxRevisions: 3, maxRegenerations: 1, maxStructureChanges: 1, ...options };
+    this.o = { maxHermesCalls: 24, maxRevisions: 3, maxPatches: 4, maxRegenerations: 1, maxStructureChanges: 1, ...options };
     this.calls = new Budget('hermes-calls', this.o.maxHermesCalls);
   }
   get revisionsLeft(): number { return this.o.maxRevisions - this.revisions; }
+  get patchesLeft(): number { return this.o.maxPatches - this.patches; }
   get regenerationsLeft(): number { return this.o.maxRegenerations - this.regenerations; }
   get structureChangesLeft(): number { return this.o.maxStructureChanges - this.structureChanges; }
   note(): string {
-    return `fix requests in the same chat left: ${this.revisionsLeft}; fresh restarts left: ${this.regenerationsLeft}; structure changes left: ${this.structureChangesLeft}; Hermes calls left: ${this.calls.remaining}`;
+    return `direct patches left: ${this.patchesLeft}; fix requests in the same chat left: ${this.revisionsLeft}; fresh restarts left: ${this.regenerationsLeft}; structure changes left: ${this.structureChangesLeft}; Hermes calls left: ${this.calls.remaining}`;
   }
 }
 

@@ -14,26 +14,28 @@ const H = 3_600_000;
 const info = (status: 'skipped' | 'written' | 'needs_human', extra = {}) => ({ url: 'https://k/x', title: 'T', status, reason: 'why', ...extra });
 
 describe('BlogStateStore', () => {
-  it('backs a failed row off for 6, 12, 24 hours and then parks it', async () => {
+  it('retries a failed row straight away, parks it after 5 failures, and unpark makes every unfinished row eligible again', async () => {
     const s = new BlogStateStore(dir);
     const t0 = 1_000_000;
-    const a = await s.record(5, info('skipped'), t0);
-    expect(a.nextEligibleAt).toBe(t0 + 6 * H);
-    const b = await s.record(5, info('needs_human'), t0);
-    expect(b.nextEligibleAt).toBe(t0 + 12 * H);
-    const c = await s.record(5, info('skipped'), t0);
-    expect(c.status).toBe('parked');
+    for (let i = 0; i < 3; i++) expect((await s.record(5, info(i % 2 ? 'needs_human' : 'skipped'), t0)).nextEligibleAt).toBe(t0);
+    expect((await s.record(5, info('skipped'), t0)).nextEligibleAt).toBe(t0 + 0.05 * H);
+    expect((await s.record(5, info('skipped'), t0)).status).toBe('parked');
+    await s.record(6, info('needs_human', { url: 'https://k/y' }), t0);
+    await s.record(7, info('written', { url: 'https://k/z' }), t0);
+    expect(s.isEligible(await s.load(), 5, 'https://k/x', t0 + 1000 * H)).toBe(false);
+    expect(await s.unpark()).toBe(2);
     const state = await s.load();
-    expect(s.isEligible(state, 5, 'https://k/x', t0 + 1000 * H)).toBe(false);
-    expect(await s.unpark()).toBe(1);
-    expect(s.isEligible(await s.load(), 5, 'https://k/x', t0)).toBe(true);
+    expect(s.isEligible(state, 5, 'https://k/x', t0)).toBe(true);
+    expect(s.isEligible(state, 6, 'https://k/y', t0)).toBe(true);
+    expect(state.rows['7']!.status).toBe('written');
   });
-  it('is not eligible during the cool-down but is afterwards', async () => {
+  it('is eligible again straight away after a first failure, and waits only for a transient cool-down', async () => {
     const s = new BlogStateStore(dir);
     await s.record(7, info('skipped'), 0);
-    const state = await s.load();
-    expect(s.isEligible(state, 7, 'https://k/x', 5 * H)).toBe(false);
-    expect(s.isEligible(state, 7, 'https://k/x', 7 * H)).toBe(true);
+    expect(s.isEligible(await s.load(), 7, 'https://k/x', 0)).toBe(true);
+    await s.record(8, info('skipped', { transient: true }), 0);
+    expect(s.isEligible(await s.load(), 8, 'https://k/x', 10 * 60_000)).toBe(false);
+    expect(s.isEligible(await s.load(), 8, 'https://k/x', 21 * 60_000)).toBe(true);
   });
   it('a changed URL resets the row', async () => {
     const s = new BlogStateStore(dir);

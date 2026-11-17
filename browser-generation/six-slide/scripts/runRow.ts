@@ -90,9 +90,13 @@ async function processOneRow(target: SheetRowInfo): Promise<void> {
 
   let succeeded = 0;
   let failed = 0;
+  // A row that failed is skipped for the rest of this run (it was re-picked every round before, so one bad row used up the whole batch).
+  const failedRows = new Set<number>();
+  let consecutiveFailures = 0;
+  const MAX_CONSECUTIVE_FAILURES = 3; // several different rows failing in a row means the account or ChatGPT is broken, not the rows
   for (let i = 0; i < count; i++) {
     console.log(`\n========== Row ${i + 1}/${count} of this run ==========`);
-    const target = await getNextPendingRow();
+    const target = await getNextPendingRow(failedRows);
     if (!target) {
       console.log('No pending rows left: every row with a targetUrl + title already has a 7Slide value.');
       break;
@@ -100,9 +104,17 @@ async function processOneRow(target: SheetRowInfo): Promise<void> {
     try {
       await processOneRow(target);
       succeeded++;
+      consecutiveFailures = 0;
     } catch (err: any) {
       console.error(`\n❌ Row ${target.row} failed: ${err.message}`);
       failed++;
+      failedRows.add(target.row);
+      consecutiveFailures++;
+      if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+        console.error(`
+Stopping: ${consecutiveFailures} rows failed in a row (rows ${[...failedRows].join(', ')}). Check the "${accountName}" ChatGPT account (limit, popup or login), then run again. Failed rows were not written to the sheet.`);
+        break;
+      }
     }
   }
 

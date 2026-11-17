@@ -42,6 +42,8 @@ export interface BlogDecideInput {
   material: string;
   history: readonly BlogDecision[];
   limitsNote: string;
+  /** Replaces the supervisor's default role text for this call (free-v2 uses its own checklist). */
+  role?: string;
 }
 
 export interface BlogDecideResult {
@@ -53,7 +55,7 @@ export function buildBlogSupervisorPrompt(role: string, input: BlogDecideInput):
   const history = input.history.map((d) =>
     [`- ${d.gate}: ${d.action} (${d.reason})`, d.instructions ? `  Corrections asked: ${d.instructions}` : ''].filter(Boolean).join('\n'));
   return [
-    role.trim(),
+    (input.role ?? role).trim(),
     `\n## GATE\n${input.gate}`,
     `\n## LIMITS\n${input.limitsNote}`,
     `\n## EARLIER DECISIONS FOR THIS ROW\n${history.length ? history.join('\n') : 'none'}`,
@@ -64,6 +66,11 @@ export function buildBlogSupervisorPrompt(role: string, input: BlogDecideInput):
 
 export function loadBlogRole(): string {
   return readFileSync(new URL('../roles/supervisor.md', import.meta.url), 'utf8');
+}
+
+/** Review checklist for the free-v2 blog mode (replaces the V1.3 link plan, which free-v2 does not follow). */
+export function loadFreeRole(): string {
+  return readFileSync(new URL('../roles/free-review.md', import.meta.url), 'utf8');
 }
 
 export function createBlogHermesAsk(signal?: AbortSignal): HermesAsk {

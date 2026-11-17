@@ -297,11 +297,19 @@ Read the complete accessible Primary Report page, including relevant summaries, 
 
 Do not rely exclusively on search snippets.
 
-If the Primary Report cannot be accessed, retry through reasonable available retrieval methods.
+If the Primary Report cannot be accessed, retry through reasonable available retrieval methods: open the URL again, try the same URL without the trailing path variations only if it is the same page, and run web searches for the exact report title and for "kenresearch.com" plus the market name and geography.
 
-If the page still cannot be verified, output exactly:
+## Fallback when the Primary Report page still cannot be opened
 
-Primary report could not be verified
+NEVER stop, apologise or output a refusal sentence. Do not output "Primary report could not be verified" or any similar message. Always deliver the full article.
+
+When the Primary Report page cannot be opened after retries, build the article from web research instead:
+
+1. Run web searches for the market size, base year, forecast value, CAGR, segmentation, key participants, drivers and restraints, giving priority to other pages on kenresearch.com about the same or an adjacent market, and to Ken Research's own published statements.
+2. Complete the evidence from official sources: government ministries, national statistics agencies, central banks, regulators, customs and trade authorities, and official international statistical institutions. Use them for macro context, regulation, trade, adoption and any figure the Ken Research material does not give.
+3. Use Ken Research figures only when you actually read them on a kenresearch.com page or in a Ken Research publication. Attribute them to Ken Research. If you cannot find a Ken Research market size or forecast, do not invent one: build the article around the official figures you did verify, name their source, and describe the market without a proprietary size or CAGR.
+4. Treat the supplied Report Title and URL slug as the market identity. Never present a related industry as the market covered by the report.
+5. The Ken Research brand rules, link rules, Preferred Source block, FAQ, and every other requirement below still apply in full. Include the Primary Report URL unchanged in the final call to action even though the page could not be opened, and describe only report coverage that the title, URL and any Ken Research pages you did read reasonably support. Do not claim specific tables, segment names or company lists you did not see.
 
 Do not fabricate missing report information.
 
@@ -517,6 +525,7 @@ This is the main article title entered into the publishing platform's title fiel
 
 - Output separately in plain English, without HTML or Markdown.
 - Place the primary market keyword and geography naturally near the beginning.
+- Include the core market-research search phrase naturally, for example "Market Size, Growth and Forecast" or "Market Size, Share, Growth and Forecast to 2032". Use "Share" only when the Primary Report page actually presents market-share or competitive-share information; use the verified forecast end year, never an assumed one.
 - Clearly communicate the article's strongest verified finding or editorial angle.
 - Prefer approximately 60–100 characters, but prioritise natural wording and completeness.
 - Make the title compelling, specific and appropriate for the dynamically selected audience.
@@ -541,7 +550,7 @@ Generate one unique, search-optimised Meta Description.
 
 - Output in normal English as plain text. No HTML tags. No Markdown formatting.
 - Aim for approximately 140–160 characters, preferably 145–155. Prioritise clarity and verified claims over an exact count.
-- Include the market and geography naturally.
+- Include the market and geography naturally, plus a market-research term such as market size, growth or forecast.
 - Include a verified finding or meaningful reader benefit.
 - Accurately represent the article.
 - Use natural, compelling language. Avoid keyword stuffing, exaggerated claims and invented statistics.
@@ -554,8 +563,9 @@ This is the main heading inside the actual HTML article.
 - Place the primary market name and geography near the beginning.
 - Keep the heading concise, descriptive and natural.
 - Communicate the main editorial thesis.
-- Include <strong>Ken Research</strong> as required by the existing brand rules, written naturally inside the headline sentence, for example "...: <strong>Ken Research</strong> Examines the ...". Never add it as a suffix such as "| <strong>Ken Research</strong>" or "| <strong>Ken Research</strong>"; no pipe characters in the H1.
-- Pattern (style example only, never reuse its wording or market): "Malaysia’s Retail and Pharma Logistics Shift Toward Integrated 3PL Networks: <strong>Ken Research</strong> Examines the Scale and Compliance Opportunity". Market and geography first, then the thesis, then a colon and a natural clause naming Ken Research.
+- The H1 must carry explicit market-research search intent: include terms such as "Market Size", "Growth" and "Forecast" (and "Share" only when the report supports share data) near the market name, not only a thematic phrase such as "the digital shift". Keep it natural and as short as possible.
+- Include Ken Research as required by the existing brand rules, written naturally inside the headline sentence, for example "...: Ken Research Examines the ...". Never add it as a suffix such as "| Ken Research"; no pipe characters in the H1.
+- Pattern (style example only, never reuse its wording or market): "Malaysia’s Retail and Pharma Logistics Shift Toward Integrated 3PL Networks: Ken Research Examines the Scale and Compliance Opportunity". Market and geography first, then the thesis, then a colon and a natural clause naming Ken Research.
 - Do not automatically duplicate the Publishing Title or SEO Title.
 - The H1 must appear inside the FINAL ARTICLE HTML, immediately after the header-image placeholder.
 
@@ -645,6 +655,16 @@ For major numerical statements:
 - Maintain the correct market scope.
 - Differentiate official statistics from proprietary estimates.
 
+## Explicit source references for major estimates
+
+Every major third-party or official figure (for example workforce or population shares, counts of licensed companies or participants, quarterly or annual flow figures, prices, trade values, regulatory counts) must name its original source in the same sentence or the one beside it, with the publication or dataset and its year or period, for example "according to the Qatar Central Bank's 2025 annual report" or "World Bank Remittance Prices Worldwide, Q3 2025".
+
+- Never attribute such a figure vaguely to "the market assessment", "the assessment", "industry data" or "analysts".
+- Name the original source on every such figure. Hyperlink only the 1 to 2 most important official sources (the article-wide maximum is 2 official links); the other sources are named in text without a link. Still at most one link per paragraph.
+- If the Primary Report page is the only source that gives the figure, attribute it to Ken Research by name instead of a vague phrase.
+- If an original source cannot be identified, omit the figure rather than publishing it unattributed.
+- Prioritise sourcing for the three or four figures a reader is most likely to quote or challenge.
+
 ## Original analysis
 
 Go beyond merely restating market figures.
@@ -693,6 +713,12 @@ Depending on the market and available evidence, consider questions such as:
 - What risks should industry participants consider?
 - What decisions should stakeholders make next?
 
+## Market segmentation section
+
+When the Primary Report page shows segmentation (for example by type, channel, service, product, end user, application, technology, region or destination corridor), include one dedicated H2 that explains how the market is segmented and which segments matter commercially, using the report's own segment names. Add segment values or shares only when the page gives them; never invent a segment, share or ranking. Choose the segmentation axes that matter most to the selected audience. If the page gives no segmentation, skip this section rather than invent one.
+
+Close that section with one short unlinked sentence saying the full report breaks the market down by those segments (name them), so interest is raised before the final call to action. Do not add a second report link.
+
 This is an analytical checklist, not a mandatory article structure.
 
 Prioritise the questions most relevant to the market.
@@ -711,29 +737,23 @@ Provide useful explanations of the commercial significance of verified findings.
 
 Apply these conventions within the HTML article:
 
-1. Every visible occurrence of "Ken Research" must appear as `<strong>Ken Research</strong>`.
+1. Bold is applied automatically after you write. Do not spend effort on `<strong>` for the brand or for figures, and do not add bold to the SEO Title or Meta Description.
 
-2. The H1 must contain the bold brand naturally inside the sentence, never as a "| Ken Research" suffix.
+2. The H1 must contain the brand "Ken Research" naturally inside the sentence, never as a "| Ken Research" suffix.
 
 3. The first mention of Ken Research in the opening paragraph must link to the homepage:
 
-`<a href="https://www.kenresearch.com/"><strong>Ken Research</strong></a>`
+`<a href="https://www.kenresearch.com/">Ken Research</a>`
 
-4. Include the homepage link only once.
+4. Link the homepage exactly twice in total: once in the opening paragraph (rule 3) and once more later in the body, in a different H2 section, on a natural "Ken Research" mention, using the same anchor markup.
 
 5. Attribute proprietary market statistics naturally to Ken Research.
 
-6. Bold meaningful numerical values within the article, including market values, years, percentages and important quantities.
+6. Do not use empty promotional language.
 
-7. Do not bold numbers inside the plain-text SEO Title or Meta Description.
+7. Do not repeatedly mention Ken Research when attribution is already clear.
 
-8. Maintain consistent numerical and brand formatting.
-
-9. Do not use empty promotional language.
-
-10. Do not repeatedly mention Ken Research when attribution is already clear.
-
-11. Avoid unsupported superlatives and aggressive sales claims.
+8. Avoid unsupported superlatives and aggressive sales claims.
 
 The article must communicate research credibility rather than read like promotional advertising.
 
@@ -747,7 +767,7 @@ Link placement must be driven by contextual relevance rather than a rigid articl
 
 ## Ken Research homepage
 
-Include the Ken Research homepage link once, on the first brand mention in the opening paragraph.
+Include the Ken Research homepage link exactly twice: first on the first brand mention in the opening paragraph, and a second time on a later "Ken Research" mention in the body, in a different H2 section from any other Ken Research link and never in a paragraph next to another linked paragraph.
 
 ## Primary Report URL
 
@@ -773,9 +793,7 @@ Prefer reports sharing:
 - Connected market drivers.
 - Similar procurement or investment considerations.
 
-Include approximately 2–4 genuinely useful related-report links when supported by relevant, accessible pages.
-
-Relevance matters more than a fixed link count.
+Include at least 3 genuinely useful related-report links (3 or 4), each to a different verified kenresearch.com report page. Search until you have found at least 3 accessible pages; if the same geography has fewer, use adjacent industries or the same industry in other geographies.
 
 Never invent or construct a report URL.
 
@@ -789,18 +807,14 @@ Distribute links naturally through appropriate sections.
 
 ## Government and official evidence
 
-Include approximately 2–3 relevant links to verified government or official institutional sources when suitable evidence exists.
-
-More or fewer links may be used when justified by the topic.
+Cite at least 1 and at most 2 verified government or official institutional sources, as hyperlinks. Never link more than 2 official sources in the whole article, including links on individual figures: choose the 2 that support the most important statements.
 
 Use links that genuinely support the statements beside them.
-
-Do not insert irrelevant official sources merely to achieve a quota.
 
 ## Link quality
 
 - No links inside headings.
-- Prefer no more than one link per paragraph.
+- Exactly zero or one link per paragraph or list item, never two.
 - Avoid unnecessary link clusters.
 - Do not create a separate link directory.
 - Do not invent sources.
@@ -827,11 +841,11 @@ Base the decision on:
 For evidence-rich market reports, approximately 1,200–1,800 words may provide useful depth.
 
 **STRICT ARTICLE WORD COUNT RULE (takes precedence over the preceding general length guidance):**
-- Target 1,300–1,500 visible words, preferably approximately 1,400.
-- Absolute hard maximum: 1,600 visible words. Never exceed 1,600 words.
+- Target 1,400–1,650 visible words including the FAQ, preferably approximately 1,500.
+- Absolute hard maximum: 1,800 visible words (this allows for the FAQ). Never exceed 1,800 words.
 - A shorter article is acceptable when verified evidence is insufficient; do not pad to meet the target.
 - Count only visible text within the FINAL ARTICLE, including headings, paragraphs, list items, blockquotes and link anchor text. Exclude HTML tags and attributes, SEO Title, Meta Description and all other metadata.
-- Before submitting, count the FINAL ARTICLE words; if over 1,600, remove repetition and condense lower-priority sections, then recheck. Do not omit essential verified information or add filler.
+- Before submitting, count the FINAL ARTICLE words; if over 1,800, remove repetition and condense lower-priority sections, then recheck. Do not omit essential verified information or add filler.
 
 This is guidance, not a compulsory target.
 
@@ -932,7 +946,7 @@ Use semantic HTML correctly.
 
 4. Place every paragraph inside `<p>` tags.
 
-5. Use `<strong>` for required numerical and brand formatting.
+5. Do not add `<strong>` for figures or the brand; bold is applied automatically afterwards. Use `<strong>` only where a rule below asks for it (the Preferred Source strategic line).
 
 6. Use proper `<a href="...">` links for verified sources.
 
@@ -998,6 +1012,8 @@ The closing must:
 - Name the specific business decisions the report supports for the target audience, chosen to fit the market, such as competitive benchmarking, market-entry planning, supplier or partner evaluation, investment prioritisation, capacity planning or pricing strategy. Name only decisions that the report's coverage can actually support.
 - Tell the reader what they will get from the report (for example segment sizing, forecasts, competitive landscape, regulatory context), using only coverage the Primary Report page confirms.
 - Use a clear, direct action phrase (for example "Review the full report to benchmark competitors and plan market entry") rather than a vague invitation.
+- Specifically invite the reader to access the report's segmentation, competitive-landscape and market-entry analysis, naming each only when the Primary Report page confirms that coverage, and name the concrete segments or competitors' coverage where known (for example transfer-channel or corridor segmentation).
+- The reader should already have met a report-coverage pointer earlier (the unlinked sentence closing the segmentation section, or a similar unlinked sentence after the competition section), so the call to action is not the only conversion moment. Those earlier pointers carry no link.
 - Maintain the selected editorial tone.
 - Avoid exaggerated promotional language.
 - Include the Primary Report URL exactly once, inside an HTML `<a>` tag.
@@ -1021,8 +1037,7 @@ The `<p>` contains, in this order:
 
 `<a href="https://www.google.com/preferences/source?q=kenresearch.com"><strong>Add Ken Research as a Preferred Source on Google</strong></a>`
 
-Wrap the words around the link naturally (for example "To follow more research like this, <a ...>...</a>."). Write Ken Research as `<strong>Ken Research</strong>` wherever it appears in the sentence.
-
+Wrap the words around the link naturally (for example "To follow more research like this, <a ...>...</a>.").
 Placement rules:
 
 - Place it in the middle or lower part of the article, after at least two H2 sections.
@@ -1048,7 +1063,7 @@ Meta Description
 
 FINAL ARTICLE
 <img src="YOUR_HEADER_IMAGE_URL_HERE" alt="...">
-<h1>Actual Blog H1 with <strong>Ken Research</strong></h1>
+<h1>Actual Blog H1 with Ken Research</h1>
 <p>...</p>
 
 The FINAL ARTICLE section is ONE complete, clean, semantic, publication-ready HTML article.
@@ -1064,131 +1079,13 @@ Requirements:
 
 **Publishing Title, SEO Title and Meta Description must be plain English text. The complete blog article must be in HTML format.**
 
-# 21. FINAL SILENT QUALITY ASSURANCE
-
-Before returning the response, silently verify every relevant requirement.
-
-## A. Market and research accuracy
-
-- Primary Report opened and verified.
-- Actual market identity confirmed.
-- Geography correctly identified.
-- Report scope preserved.
-- Base year and forecast period consistent.
-- Market values correctly attributed.
-- CAGR and numerical claims verified.
-- No invented statistics.
-- No unsupported market-share percentages.
-- Relevant official information verified.
-- Proprietary and official estimates differentiated.
-
-## B. Dynamic content strategy
-
-- Primary target audience selected from the specific market.
-- Secondary audience included only when relevant.
-- Tone chosen according to audience and industry.
-- Technical depth appropriate to readers.
-- Primary search intent identified.
-- Editorial angle supported by evidence.
-- Article structure adapted to the market.
-- No reused universal template.
-- No arbitrary H2 count.
-- No irrelevant stakeholder references.
-
-## C. SEO quality
-
-- Publishing Title written in plain text and distinct from the SEO Title and H1.
-- SEO Title written in plain text.
-- SEO Title relevant and distinct from H1.
-- Meta Description written in plain text.
-- Meta Description accurately summarises the article.
-- Search intent addressed.
-- Primary keyword integrated naturally.
-- Important semantic concepts covered.
-- Headings meaningful and market-specific.
-- No keyword stuffing.
-- No generic filler.
-- No unnecessary repetition.
-
-## D. AEO, AIO and GEO quality
-
-- Important questions answered clearly.
-- Major facts understandable independently.
-- Markets and entities consistently named.
-- Figures include relevant dates and units.
-- Evidence properly attributed.
-- Original analysis adds meaningful value.
-- Interpretations distinguished from verified facts.
-- No fabricated citations.
-- No unsupported claims of guaranteed AI visibility.
-
-## E. Industry and audience relevance
-
-- Article addresses the selected primary audience.
-- Tone appropriate to the market.
-- Commercial or practical implications explained.
-- Relevant opportunities identified.
-- Important risks considered.
-- Technical information explained appropriately.
-- No irrelevant investor or procurement references.
-- Analysis goes beyond simply repeating market statistics.
-
-## F. HTML and formatting
-
-- Publishing Title is plain text.
-- SEO Title is plain text.
-- Meta Description is plain text.
-- Article is entirely HTML.
-- Exactly one H1.
-- Appropriate H2/H3 hierarchy.
-- Properly closed HTML tags.
-- No Markdown inside HTML.
-- No HTML code fences.
-- No HTML document wrappers.
-- No tables, emojis or em dashes.
-- Every visible Ken Research mention is bold.
-- Meaningful numerical values in the article are bold.
-- Exactly one header image placeholder immediately before the H1; no other images.
-- Primary Report URL appears once in the final CTA.
-- No invalid or broken HTML; every href is written as href="https://..." with a single pair of straight quotes.
-- The H1 carries the bold brand inside the sentence, with no "| Ken Research" suffix.
-
-## G. Link quality
-
-- Homepage linked once.
-- Related Ken Research reports verified.
-- Official external sources verified.
-- Internal links contextually relevant.
-- No invented URLs.
-- No unnecessary links.
-- Exactly one Preferred Source call to action, inside a blockquote, with the exact Google URL and no other link in that paragraph.
-- No links inside headings.
-- No competing research-firm links.
-
-## I. Editorial quality
-
-- Article is original.
-- No predetermined template.
-- No artificial word-count padding.
-- No unnecessary headings.
-- No mechanical paragraph patterns.
-- No exaggerated promotion.
-- No generic AI-written filler.
-- Strong logical progression.
-- Natural professional English.
-- Distinctive, evidence-based insights.
-- Appropriate analytical depth.
-- Publication-ready presentation.
-
----
-
 # ADDITIONAL EDITORIAL, LINKING AND ANALYSIS RULES
 
 These rules supplement the existing requirements. Where an earlier instruction conflicts with a rule below, apply the more specific rule below.
 
 ## H1 CLARITY
 
-Keep the article H1 concise, keyword-first and natural. It must still include the market geography and the existing required `<strong>Ken Research</strong>` brand formatting. Do not add unnecessary length or HTML emphasis beyond required brand/statistical emphasis. Never end the H1 with a "| Ken Research" suffix; place the brand inside the sentence.
+Keep the article H1 concise, keyword-first and natural. It must still include the market geography and the Ken Research brand name. Do not add unnecessary length. Never end the H1 with a "| Ken Research" suffix; place the brand inside the sentence.
 
 ## CONTENT DENSITY AND HEADINGS
 
@@ -1204,27 +1101,27 @@ When a verified base-year-versus-forecast comparison is useful, present it in a 
 - No hyperlinks in any H1, H2 or H3 heading.
 - Never place hyperlinks in two consecutive paragraphs. Separate linked paragraphs with at least one unlinked paragraph; apply the same principle to consecutive list items when practical.
 - The paragraph immediately preceding the final call-to-action paragraph must contain NO hyperlink.
-- The Ken Research homepage link remains in the opening paragraph on its first brand mention.
+- LINK COUNTS: homepage exactly 2 (one on the first brand mention in the opening paragraph, one later in a different section); related Ken Research reports at least 3; official or government sources at least 1 and at most 2; Primary Report URL exactly 1 (final call to action only); Google Preferred Source exactly 1.
 - The Primary Report URL must appear exactly once, ONLY in the final call-to-action paragraph. Do not add a second Primary Report URL in the main body.
-- Place verified adjacent Ken Research and official-source links contextually where they contribute; skip or reposition a link rather than violate the placement rules.
+- SPREAD ACROSS SECTIONS: plan the links before writing. Never leave two consecutive H2 sections without a Ken Research link (homepage or related report) in at least one of them. Official-source and Google links do not satisfy this rule. Alternate link-bearing and link-free paragraphs so no two linked paragraphs touch, and put the three or more related-report links in different H2 sections. The introduction counts as its own block for the homepage link only. If the article has too many H2 sections to satisfy this, merge H2 sections instead of breaking the rule.
+- Place verified adjacent Ken Research and official-source links contextually where they contribute; reposition a link rather than violate the placement rules.
 
-## OPTIONAL FAQ SECTION
+## FAQ SECTION
 
-Add a FAQ section only when it contributes information the article does not already give. If you add it:
+Include a FAQ section that covers long-tail informational searches about this market:
 
 - Use an H2 with the exact text "Frequently Asked Questions".
-- Include exactly two genuinely distinct, buyer-focused questions, each as an H3 starting with "Q1." and "Q2." (for example "Q1. What decisions does this report help with?"), followed by one short answer paragraph of 40 to 70 words.
-- Answers must use verified information only, repeat no earlier paragraph, and contain no links.
+- Include three or four genuinely distinct questions, each as an H3 starting "Q1.", "Q2.", "Q3." (and "Q4."), followed by one concise answer paragraph of 40 to 65 words.
+- Write the questions the way people search, for example the market's size and forecast, what drives or limits growth, who the main participants or segments are, and how regulation or entry works. Do not make them all about the report.
+- The first sentence of each answer must give the direct answer with the figure, year, unit and named source where one is used.
+- Answers must use verified information only, may restate a key figure for answer-engine use but add a detail not already in the same wording, and contain no links.
 - Place the FAQ before the final call-to-action paragraph. The paragraph immediately before the final call-to-action still carries no link.
-- Skip the FAQ entirely when two such questions would only repeat the article.
+- Do not place the Preferred Source block inside or directly beside the FAQ.
+- Reduce to three questions rather than pad with a weak fourth.
 
 ## ORIGINAL CALCULATED INSIGHT
 
 Include at least one genuinely useful calculated insight when the necessary figures are verified and comparable, especially a contrast between market revenue growth and unit/volume growth. Clearly label derived arithmetic as analysis, preserve the relevant years and units, and explain its practical commercial implication. Do not invent absent volume figures, infer unverified causality, or force a calculation when adequate data is unavailable.
-
-## MANDATORY BOLD FORMATTING
-
-Within the FINAL ARTICLE HTML, wrap ALL meaningful market statistics (including numerical market values, growth rates, percentages, dates, volumes, units and derived numerical insights) in `<strong>` tags. Every visible `Ken Research` mention must also use `<strong>Ken Research</strong>`, including within links and headings. SEO Title and Meta Description remain plain text without HTML markup.
 
 # FINAL OVERRIDING INSTRUCTION
 

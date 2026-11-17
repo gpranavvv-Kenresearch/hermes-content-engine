@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BlogDecisionSchema, HermesUnavailableError } from '../src/types.js';
-import { BlogLimits, BlogSupervisor, buildBlogSupervisorPrompt } from '../src/supervisor.js';
+import { BlogLimits, BlogSupervisor, buildBlogSupervisorPrompt, loadFreeRole } from '../src/supervisor.js';
 
 const input = { gate: 'draft' as const, material: 'ARTICLE', history: [], limitsNote: 'n' };
 const make = (replies: (string | Error)[], limits = new BlogLimits()) => {
@@ -13,6 +13,20 @@ const make = (replies: (string | Error)[], limits = new BlogLimits()) => {
   return { sup: new BlogSupervisor(ask, 'ROLE', limits), calls: () => i, limits };
 };
 const ok = () => 'Sure. {"gate":"draft","action":"retry","reason":"fix it","instructions":"1. Cut paragraph 3."}';
+
+describe('free-v2 review role', () => {
+  it('replaces the default role for one call and carries the free-v2 link rules', () => {
+    const role = loadFreeRole();
+    expect(role).toContain('exactly 2');
+    expect(role).toContain('at least 3');
+    expect(role).toContain('at most 2');
+    expect(role).toContain('Frequently Asked Questions');
+    const prompt = buildBlogSupervisorPrompt('DEFAULT ROLE', { ...input, role: 'FREE ROLE' });
+    expect(prompt.startsWith('FREE ROLE')).toBe(true);
+    expect(prompt).not.toContain('DEFAULT ROLE');
+    expect(buildBlogSupervisorPrompt('DEFAULT ROLE', input).startsWith('DEFAULT ROLE')).toBe(true);
+  });
+});
 
 describe('BlogDecisionSchema', () => {
   it('trims over-long free text instead of rejecting it', () => {

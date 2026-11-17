@@ -71,9 +71,10 @@ export async function getRow(rowNumber: number): Promise<SheetRowInfo> {
  * 7Slide PDF generated after that point would just sit there, never picked
  * up by anything.
  */
-export async function getNextPendingRow(): Promise<SheetRowInfo | null> {
+export async function getNextPendingRow(skipRows: ReadonlySet<number> = new Set()): Promise<SheetRowInfo | null> {
   const { rows, cols } = await loadTab();
   for (let i = 1; i < rows.length; i++) {
+    if (skipRows.has(i + 1)) continue; // failed earlier in this run
     const r = rows[i];
     const targetUrl = (r[cols.url] ?? '').trim();
     const title = (r[cols.title] ?? '').trim();

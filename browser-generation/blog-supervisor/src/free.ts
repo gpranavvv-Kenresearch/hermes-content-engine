@@ -5,7 +5,9 @@
  *   2. no extra text around the three deliverable sections or the HTML (markdown, commentary, code fences),
  *   3. every "Ken Research" bold,
  *   4. every meaningful statistic bold.
- * UTM parameters on kenresearch.com links are added by the existing blog UTM step; links, H2 counts, middle images and the
+ * After that code step, Hermes reviews the draft at the draft gate with roles/free-review.md (links, sources, FAQ, integrity),
+ * and may patch it directly, ask for a same-chat fix, or restart. Code does not count links or H2s itself.
+ * UTM parameters on kenresearch.com links are added by the existing blog UTM step; middle images and the
  * preferred-source call to action are not checked or added in this mode.
  */
 import type { BlogGenResult } from '../../src/agents/blogGenAgent.js';
@@ -71,7 +73,10 @@ export interface FreeSanity {
 
 /** Counts what is still wrong after normaliseFreeBlog. Everything but h1 should be zero. */
 export function freeSanity(html: string, seoTitle = '', description = ''): FreeSanity {
-  const noStrong = html.replace(/<strong>\s*Ken Research\s*<\/strong>/gi, '');
+  // "Bold" means inside any <strong> or <b> element, the same rule enforceBrandAndFigureBold and measure.ts use. Matching only an
+  // exact <strong>Ken Research</strong> counted the brand inside a longer bold phrase (the preferred-source CTA link text, for
+  // example) as unbolded and sent a ChatGPT fix round for something that was already bold.
+  const noStrong = html.replace(/<(strong|b)\b[^>]*>[\s\S]*?<\/\1>/gi, ' ');
   return {
     emDashes: (`${html} ${seoTitle} ${description}`.match(/[\u2014\u2015]/g) ?? []).length,
     unboldedKen: (noStrong.replace(/<[^>]+>/g, ' ').match(/Ken Research/g) ?? []).length,

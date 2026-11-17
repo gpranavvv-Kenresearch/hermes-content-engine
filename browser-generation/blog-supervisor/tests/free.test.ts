@@ -45,6 +45,13 @@ describe('free-v2 normalisation', () => {
     expect(freeHardFails(blog('<p>No heading here.</p>'))[0]).toMatch(/0 H1/);
   });
 
+  it('counts the brand inside a longer bold phrase as bold, and a plain mention as not bold', () => {
+    const cta = '<h1>Title</h1><p>Text.</p><blockquote><a href="https://www.google.com/preferences/source?q=kenresearch.com"><strong>Add Ken Research as a Preferred Source on Google</strong></a></blockquote>';
+    expect(freeSanity(cta).unboldedKen).toBe(0);
+    expect(freeSanity('<h1>T</h1><p>Per <b>Ken Research</b> data and <strong>the Ken Research view</strong>.</p>').unboldedKen).toBe(0);
+    expect(freeSanity('<h1>T</h1><p>Per Ken Research data.</p>').unboldedKen).toBe(1);
+  });
+
   it('replaces the writer placeholder with the cover image above the H1, and adds nothing else', () => {
     const out = normaliseFreeBlog(blog(RAW));
     const html = assembleFreeHtml(out, 'Market', 'https://cdn.example/cover.png');

@@ -12,7 +12,9 @@ import { applyPreferredSourceCTA, validatePreferredSourceCTA } from '../../src/a
 import {
   injectCoverImage, moveImagesBelowFirstH2, injectSnapshotImage, injectSnapshotImage2, stripUnresolvedImagePlaceholders, verifyWrite, PREFERRED_SOURCE_MODE,
 } from '../../src/coordinator/blogGenLoop.js';
-import { saveCoverImageUrlToPool, saveGeneratedBlogToPool, saveNewLogicImageText } from '../../src/sheets/sheets.js';
+import { markRowGray, saveTrendsDataToRow, saveCoverImageUrlToPool, saveGeneratedBlogToPool, saveNewLogicImageText } from '../../src/sheets/sheets.js';
+import { collectSearchContextSafely } from '../../../src/signals/context-collector.js';
+import { hasUsableSearchContext } from '../../../src/signals/search-context.js';
 import { gatherBlogEvidence } from './evidence.js';
 import { assembleFreeHtml, isFreeStructure } from './free.js';
 import type { BlogLedger } from './state.js';
@@ -30,6 +32,8 @@ export interface RealDepsOptions {
 export function createRealDeps(opts: RealDepsOptions): Pick<BlogRowDeps, 'evidence' | 'openChat' | 'cover' | 'finishArticle' | 'save' | 'verify' | 'structureMode'> {
   const config = loadConfig();
   const log = (summary: string) => opts.ledger.append('assemble', { summary }).catch(() => {});
+  // Rows run one at a time, so the title of the row in progress can be kept here for the sheet marking after verify.
+  let currentTitle = '';
 
   const finishArticle = async ({ blog, title, coverImageUrl, structure }: FinishArticleParams): Promise<string> => {
     if (isFreeStructure(structure)) {
@@ -72,7 +76,18 @@ export function createRealDeps(opts: RealDepsOptions): Pick<BlogRowDeps, 'eviden
 
   return {
     structureMode: opts.structureMode,
-    evidence: (input) => gatherBlogEvidence(input, { config }),
+    evidence: async (input) => {
+      currentTitle = input.title;
+      const ev = await gatherBlogEvidence(input, { config });
+      // Pipeline order: keyword, Google Trends, add to the prompt, then send to GPT. The blog and cover prompts
+      // read the collected context from the cache by this title. Best effort: a Trends failure never blocks the row.
+      if (ev.pageLoaded) {
+        const trends = await collectSearchContextSafely(input.title, input.url, (l) => { console.log(`   ${l}`); void log(l); });
+        // The collected data goes into the row's "Trends Data" column right away, before any generation can fail.
+        if (trends.sheetText && input.rowIndex) await saveTrendsDataToRow(input.rowIndex, trends.sheetText, 'newLogic');
+      }
+      return ev;
+    },
     openChat: (p) => openBlogChatSession({ title: p.title, url: p.url, structure: p.structure, ...(p.promptSuffix ? { promptSuffix: p.promptSuffix } : {}), ...(opts.blogAccount ? { accountHandle: opts.blogAccount } : {}) }),
     ...(opts.withImage
       ? {
@@ -92,6 +107,14 @@ export function createRealDeps(opts: RealDepsOptions): Pick<BlogRowDeps, 'eviden
         coverImageUrl: data.coverImageUrl, html: data.html, seoTitle: data.blog.seoTitle, metaDescription: data.blog.description,
         imageData: data.blog.imageData, imageData2: data.blog.imageData2,
       }, 'newLogic'),
-    verify: (rowIndex) => verifyWrite(rowIndex, opts.withImage),
+    verify: async (rowIndex) => {
+      const verdict = await verifyWrite(rowIndex, opts.withImage);
+      // Gray row = this blog was written with Google Trends context in its prompt.
+      if (verdict.ok && currentTitle && hasUsableSearchContext(currentTitle)) {
+        try { await markRowGray(rowIndex, 'newLogic'); await log('row marked gray: blog written with Google Trends context'); }
+        catch (e) { await log(`could not mark row gray (blog is saved): ${(e as Error).message}`); }
+      }
+      return verdict;
+    },
   };
 }

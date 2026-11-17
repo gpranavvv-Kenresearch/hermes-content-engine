@@ -30,7 +30,8 @@ import { generateAndUploadLandscapeImage } from '../agents/blogLandscapeImageAge
 import { applyPreferredSourceCTA, validatePreferredSourceCTA, PreferredSourceMode } from '../agents/blogPreferredSourceAgent.js';
 import { registerAutomation, startRun, finishRun } from '../dashboard/client.js';
 import { AUTOMATION_CONFIG } from '../dashboard/config.js';
-import { getContentPoolRowsNeedingGeneration, saveGeneratedBlogToPool, saveCoverImageUrlToPool, saveNewLogicImageText, getSheetRowByIndex } from '../sheets/sheets.js';
+import { hasUsableSearchContext } from '../../../src/signals/search-context.js';
+import { getContentPoolRowsNeedingGeneration, markRowGray, saveTrendsDataToRow, saveGeneratedBlogToPool, saveCoverImageUrlToPool, saveNewLogicImageText, getSheetRowByIndex } from '../sheets/sheets.js';
 
 // 'tracked' by default — lets us start collecting Preferred Source CTA Click
 // data from day one (can't back-fill it later). Switch to 'direct' here (or
@@ -174,6 +175,19 @@ export async function runBlogGenBatch(opts: BlogGenBatchOptions = {}): Promise<{
   for (const row of rows) {
     const title = row.title || row.targetUrl;
     console.log(`\n[BLOG GEN] Row ${row.rowIndex}: "${title}"`);
+
+    // Google Trends step (on by default, BLOG_SEARCH_CONTEXT=0 turns it off): collect search demand for this exact sheet title, then the blog
+    // and the cover image prompts read it from the cache by that same title. Best-effort: any failure, expired Google
+    // sign-in included, is logged and the row is generated without the block. Skipped when a fresh cache already exists.
+    if (process.env.BLOG_SEARCH_CONTEXT !== '0') {
+      try {
+        const { collectSearchContextSafely } = await import('../../../src/signals/context-collector.js');
+        const trends = await collectSearchContextSafely(title, row.targetUrl, (l) => console.log(`   ${l}`));
+        if (trends.sheetText) await saveTrendsDataToRow(row.rowIndex, trends.sheetText, 'newLogic');
+      } catch (e: any) {
+        console.log(`   ⚠️ [search-context] skipped, generating without it: ${e.message}`);
+      }
+    }
 
     let attemptsLeft = retryOnVerifyFail ? 2 : 1;
     let rowOk = false;
@@ -348,6 +362,13 @@ export async function runBlogGenBatch(opts: BlogGenBatchOptions = {}): Promise<{
           console.log(`   ✅ Row ${row.rowIndex} verified.${verdict.reason ? ` (${verdict.reason})` : ''}`);
           rowOk = true;
           generated++;
+          // Gray row = this blog was written with Google Trends context. A row generated with the current prompt only
+          // (no Trends data) stays unshaded. Cosmetic: a formatting failure never affects the generated blog.
+          try {
+            if (hasUsableSearchContext(title)) await markRowGray(row.rowIndex, 'newLogic');
+          } catch (e: any) {
+            console.log(`   ⚠️ Could not shade row ${row.rowIndex} gray (blog is saved): ${e.message}`);
+          }
         } else {
           console.log(`   ⚠️ Verification failed: ${verdict.reason}${attemptsLeft > 0 ? ' — retrying this row...' : ' — giving up on this row.'}`);
         }

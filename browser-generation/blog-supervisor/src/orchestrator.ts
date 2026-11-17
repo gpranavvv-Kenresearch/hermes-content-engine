@@ -3,7 +3,7 @@ import type { BlogChatSession, BlogGenResult } from '../../src/agents/blogGenAge
 import { enforceBlogGate, type BlogGateFacts } from './gates.js';
 import { formatMeasurements, measureBlog, structuralHardFails, v13RuleFails } from './measure.js';
 import type { BlogEvidence } from './evidence.js';
-import type { BlogSupervisor, BlogLimits } from './supervisor.js';
+import { loadFreeRole, type BlogSupervisor, type BlogLimits } from './supervisor.js';
 import type { BlogLedger, BlogStateStore } from './state.js';
 import { applyPatch } from './patch.js';
 import { enforceBrandAndFigureBold } from './bold.js';
@@ -38,7 +38,7 @@ export interface BlogRowDeps {
   limits: BlogLimits;
   ledger: BlogLedger;
   store: BlogStateStore;
-  evidence: (input: { url: string; title: string }) => Promise<BlogEvidence>;
+  evidence: (input: { url: string; title: string; rowIndex?: number }) => Promise<BlogEvidence>;
   openChat: (params: OpenChatParams) => Promise<BlogChatSession>;
   /** Cover image (optional, non-fatal, runs while the article is written). */
   cover?: (input: { title: string; url: string; row: BlogRowInput }) => Promise<{ url: string }>;
@@ -84,8 +84,8 @@ export async function processBlogRow(row: BlogRowInput, deps: BlogRowDeps): Prom
     rowIndex: row.rowIndex, title: row.title, status, reason, structure, gates,
   });
 
-  const gate = async (name: BlogGate, material: string, facts: Omit<BlogGateFacts, 'gate' | 'revisionsLeft' | 'patchesLeft' | 'regenerationsLeft'> ): Promise<BlogDecision> => {
-    const asked = await supervisor.decide({ gate: name, material, history, limitsNote: limits.note() });
+  const gate = async (name: BlogGate, material: string, facts: Omit<BlogGateFacts, 'gate' | 'revisionsLeft' | 'patchesLeft' | 'regenerationsLeft'>, role?: string): Promise<BlogDecision> => {
+    const asked = await supervisor.decide({ gate: name, material, history, limitsNote: limits.note(), ...(role ? { role } : {}) });
     const out = enforceBlogGate(asked.decision, { ...facts, gate: name, revisionsLeft: limits.revisionsLeft, patchesLeft: limits.patchesLeft, regenerationsLeft: limits.regenerationsLeft });
     history.push(out.decision);
     gates.push({ gate: name, action: out.decision.action, reason: out.decision.reason });
@@ -105,7 +105,7 @@ export async function processBlogRow(row: BlogRowInput, deps: BlogRowDeps): Prom
     await ledger.append('resume', { summary: `Resuming from the saved approved draft (${draft.structure}).` });
   } else {
     // ---- gate 1: evidence
-    const ev = await deps.evidence({ url: row.targetUrl, title: row.title });
+    const ev = await deps.evidence({ url: row.targetUrl, title: row.title, rowIndex: row.rowIndex });
     await ledger.append('evidence', { summary: ev.summary.split('\n')[0], pageLoaded: ev.pageLoaded, redirected: ev.redirected, finalUrl: ev.finalUrl });
     // A temporary fetch failure says nothing about the report: surface it as a retryable error instead of recording a skip.
     if (!ev.pageLoaded && ev.transient) throw new Error(`EVIDENCE_FETCH_TRANSIENT: ${ev.summary}`);
@@ -159,8 +159,11 @@ export async function processBlogRow(row: BlogRowInput, deps: BlogRowDeps): Prom
     try {
       blog = await session.generate();
       for (;;) {
-        if (isFreeStructure(structure)) {
-          // Free mode: code fixes dashes, extra text and bold itself; no Hermes draft gate, no link-plan or H2-count rules.
+        const free = isFreeStructure(structure);
+        let freeNotes: string[] = [];
+        if (free) {
+          // Free mode: code fixes dashes, extra text and bold itself, and asks for a fix if the article is unusable.
+          // Then Hermes reviews the draft against the free-v2 checklist (roles/free-review.md), not the V1.3 link plan.
           blog = normaliseFreeBlog(blog);
           const freeFails = freeHardFails(blog);
           await ledger.append('draft', { summary: `free-v2 draft normalised (${blog.html.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length} words)`, hardFails: freeFails });
@@ -169,13 +172,15 @@ export async function processBlogRow(row: BlogRowInput, deps: BlogRowDeps): Prom
             blog = await session.revise(buildReviseInstruction(freeFails.join('\n')));
             continue;
           }
-          break;
+          freeNotes = freeFails;
+        } else {
+          blog = { ...blog, html: enforceBrandAndFigureBold(blog.html) };
         }
-        blog = { ...blog, html: enforceBrandAndFigureBold(blog.html) };
         const m = measureBlog({ html: blog.html, seoTitle: blog.seoTitle, metaDescription: blog.description, primaryUrl: ev.finalUrl, evidenceText: ev.evidenceText });
-        const hard = [...structuralHardFails(m), ...(limits.revisionsLeft > 0 ? v13RuleFails(m) : [])];
+        const hard = free ? [] : [...structuralHardFails(m), ...(limits.revisionsLeft > 0 ? v13RuleFails(m) : [])];
         await ledger.append('draft', { summary: `${m.words} words, ${m.headings.h2} H2, ${m.links.total} links`, hardFails: hard });
         const material = [
+          free ? `FREE-V2 REVIEW: judge this article only by the free-v2 checklist in your role. Ignore any V1.3 link-plan or H2-count wording in the measurements below.${freeNotes.length ? `\nUNRESOLVED CODE PROBLEMS (fix budget used up):\n${freeNotes.join('\n')}` : ''}\n` : '',
           `EVIDENCE\n${ev.summary}`,
           ev.pageText ? `\nREPORT PAGE TEXT (Ken Research's own data; figures that appear here are supported)\n${ev.pageText}` : '',
           `\nSTRUCTURE IN USE: ${structure}${describeStructure(structure)?.family === 'format' ? `\nFORMAT SPEC (this format's own shape and length band govern; judge the article against it)\n${describeStructure(structure)!.summary}` : ''}`,
@@ -184,7 +189,7 @@ export async function processBlogRow(row: BlogRowInput, deps: BlogRowDeps): Prom
           `\nSEO TITLE: ${blog.seoTitle}\nMETA DESCRIPTION: ${blog.description}`,
           `\nARTICLE HTML\n${blog.html}`,
         ].join('\n');
-        const d = await gate('draft', material, { reportPageLoaded: true, hardFails: hard });
+        const d = await gate('draft', material, { reportPageLoaded: true, hardFails: hard }, free ? loadFreeRole() : undefined);
 
         if (d.action === 'proceed') break;
         if (d.action === 'stop') return result('needs_human', `draft gate: ${d.reason}`);

@@ -33,7 +33,22 @@ export async function closeChatGptBrowser(): Promise<void> {
   activeAccount = null;
 }
 
-async function launchBrowser(accountName: string): Promise<Page> {
+// The unattended scripts (storyline, slide images) run in a minimized window: it opens minimized, stays on the taskbar and is never
+// brought to the front, so it does not cover what you are working on. Opening it by hand from the taskbar works normally.
+// SHOW_BROWSER=1 keeps it visible. The interactive login script never minimizes, because a person has to use that window.
+const keepVisible = (): boolean => process.env.SHOW_BROWSER === '1';
+
+async function minimizeWindow(context: BrowserContext, p: Page): Promise<void> {
+  try {
+    const cdp = await context.newCDPSession(p);
+    const { windowId } = await (cdp as any).send('Browser.getWindowForTarget');
+    await (cdp as any).send('Browser.setWindowBounds', { windowId, bounds: { windowState: 'minimized' } });
+    await cdp.detach().catch(() => {});
+  } catch { /* best effort, never abort generation */ }
+}
+
+async function launchBrowser(accountName: string, minimized = false): Promise<Page> {
+  const minimize = minimized && !keepVisible();
   // Already have a live page for this exact account — reuse it.
   if (page && !page.isClosed() && activeAccount === accountName) return page;
 
@@ -76,6 +91,7 @@ async function launchBrowser(accountName: string): Promise<Page> {
       // skewed/zoomed window with buttons cut off. Match the two exactly.
       '--window-size=1366,900',
       '--window-position=0,0',
+      ...(minimize ? ['--start-minimized'] : []),
     ],
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
   });
@@ -83,6 +99,7 @@ async function launchBrowser(accountName: string): Promise<Page> {
   await browserContext.grantPermissions(['clipboard-read', 'clipboard-write']);
 
   page = await browserContext.newPage();
+  if (minimize) await minimizeWindow(browserContext, page);
   await page.goto('https://chatgpt.com/new', { waitUntil: 'domcontentloaded' });
   activeAccount = accountName;
   return page;
@@ -97,7 +114,7 @@ async function launchBrowser(accountName: string): Promise<Page> {
  * unattended generate scripts.
  */
 export async function ensureChatGptPage(accountName: string): Promise<Page> {
-  const p = await launchBrowser(accountName);
+  const p = await launchBrowser(accountName, true);
   await logSessionState(p);
   return p;
 }

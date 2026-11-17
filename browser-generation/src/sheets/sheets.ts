@@ -893,6 +893,58 @@ export async function getContentPoolRowsNeedingGeneration(limit: number = 3, she
 
 // ──── Write a ChatGPT-generated blog back to the Content Pool / New Logic tab ────
 
+let trendsColumnEnsured = false;
+
+/**
+ * Writes the Google Trends data collected for a row into the "Trends Data" column, creating the column on first use.
+ * Non-fatal: a sheet error is logged and the blog generation carries on.
+ */
+export async function saveTrendsDataToRow(rowIndex: number, text: string, sheetType: 'pool' | 'newLogic' = 'newLogic'): Promise<void> {
+  if (!text.trim()) return;
+  try {
+    if (!trendsColumnEnsured) { await ensureSheetColumns(sheetType, ['Trends Data']); trendsColumnEnsured = true; }
+    const sheets = await getSheetsClient();
+    const sheetConfig = getSheetConfig(sheetType);
+    const colMap = await getColumnMap(sheets, sheetConfig.id, sheetConfig.name);
+    const data = buildUpdates(colMap, rowIndex, [{ names: ['Trends Data', 'trends data'], value: text }], sheetConfig.name);
+    await batchWrite(sheets, data, sheetConfig.id);
+    console.log(`   📝 ${sheetConfig.name} row ${rowIndex}: Trends Data saved`);
+  } catch (err: any) {
+    console.log(`   ⚠️ Could not save Trends Data to the sheet (non-fatal): ${err.message}`);
+  }
+}
+
+/**
+ * Shades one whole sheet row light gray. Used to show that a row's blog was written with Google Trends search context.
+ * Formatting only: no cell value changes, so row picking (Target URL set, Blog Content empty) is unaffected.
+ */
+export async function markRowGray(rowIndex: number, sheetType: 'pool' | 'newLogic' = 'newLogic'): Promise<void> {
+  const sheets = await getSheetsClient();
+  const sheetConfig = getSheetConfig(sheetType);
+  const meta = await withRetry(() => sheets.spreadsheets.get({
+    spreadsheetId: sheetConfig.id,
+    fields: 'sheets(properties(sheetId,title,gridProperties))',
+  }), 'markRowGray:meta');
+  const props = meta.data.sheets?.find((s: any) => s.properties?.title === sheetConfig.name)?.properties;
+  if (props?.sheetId === undefined) throw new Error(`Tab "${sheetConfig.name}" not found, cannot shade row ${rowIndex}`);
+  await withRetry(() => sheets.spreadsheets.batchUpdate({
+    spreadsheetId: sheetConfig.id,
+    requestBody: {
+      requests: [{
+        repeatCell: {
+          range: {
+            sheetId: props.sheetId, startRowIndex: rowIndex - 1, endRowIndex: rowIndex,
+            startColumnIndex: 0, endColumnIndex: props.gridProperties?.columnCount ?? 26,
+          },
+          cell: { userEnteredFormat: { backgroundColor: { red: 0.85, green: 0.85, blue: 0.85 } } },
+          fields: 'userEnteredFormat.backgroundColor',
+        },
+      }],
+    },
+  }), 'markRowGray:format');
+  console.log(`   ⬜ ${sheetConfig.name} row ${rowIndex}: marked gray (blog written with Google Trends context)`);
+}
+
 export async function saveGeneratedBlogToPool(
   row: { rowIndex: number },
   result: { coverImageUrl?: string; html: string; seoTitle?: string; metaDescription?: string; imageData?: string; imageData2?: string },

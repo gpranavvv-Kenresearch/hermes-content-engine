@@ -17,6 +17,7 @@
  *   // result: { title, description, html }
  */
 
+import { insertSearchContext, searchContextBlock } from '../../../src/signals/search-context.js';
 import { chromium, BrowserContext, Page } from 'playwright';
 import fs from 'fs';
 import path from 'path';
@@ -63,7 +64,7 @@ const MAX_POLLS = 15; // 15 checks * 1 min = 15 min total hard cap
  */
 const MASTER_PROMPT_FILE = path.resolve('browser-generation/prompts/blog-generation/01-master-v1.3-live.txt');
 import { chooseStructure, DEFAULT_STRUCTURE, structureFile } from './blogStructures.js';
-export function buildMasterBlogPrompt(reportTitle: string, reportUrl: string, structureMode?: string): string {
+export function buildMasterBlogPrompt(reportTitle: string, reportUrl: string, structureMode?: string, searchContext?: string): string {
   // Default stays the live V1.3 prompt. BLOG_STRUCTURE (set by --structure=) opts into one of the standalone
   // architecture prompts: an id, rotate or random (see blogStructures.ts).
   const structure = chooseStructure(structureMode);
@@ -73,7 +74,8 @@ export function buildMasterBlogPrompt(reportTitle: string, reportUrl: string, st
   if (tpl.trim().length < 1000) {
     throw new Error(`${promptFile} is empty or too short; refusing to send an incomplete blog prompt`);
   }
-  return tpl.replace(/\{\{REPORT_TITLE\}\}/g, reportTitle).replace(/\{\{REPORT_URL\}\}/g, reportUrl);
+  const filled = tpl.replace(/\{\{REPORT_TITLE\}\}/g, reportTitle).replace(/\{\{REPORT_URL\}\}/g, reportUrl);
+  return searchContext ? insertSearchContext(filled, searchContext) : filled;
 }
 
 // ChatGPT's rate-limit / session-nudge popups can appear at any point during
@@ -494,6 +496,7 @@ export async function openBlogChatSession(params: {
       '--no-first-run',
       '--no-default-browser-check',
       '--disable-infobars',
+      ...(process.env.BLOG_SHOW_BROWSER === '1' ? [] : ['--start-minimized']),
       // Match the OS window size to the viewport — otherwise Chrome opens
       // at a mismatched size and the page renders skewed/zoomed with parts
       // cut off, before minimizeToTaskbar() below hides it anyway.
@@ -523,7 +526,9 @@ export async function openBlogChatSession(params: {
   return {
     async generate(): Promise<BlogGenResult> {
       try {
-    const prompt = buildMasterBlogPrompt(params.title, params.url, params.structure) + (params.promptSuffix ?? '');
+    const searchContext = searchContextBlock(params.title, 'blog');
+    console.log(`   [blog:${accountName}] Search context: ${searchContext ? 'Google Trends block added to the prompt' : 'none cached, generating without it'}`);
+    const prompt = buildMasterBlogPrompt(params.title, params.url, params.structure, searchContext) + (params.promptSuffix ?? '');
     console.log(`   [blog:${accountName}] Sending blog prompt (master V1.3) for: "${params.title}" (~12-15 min generation)...`);
     // The master prompt is ~45-50k characters — long enough that a clipboard
     // paste unreliably lands as either composer text or an auto-converted

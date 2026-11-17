@@ -14,6 +14,7 @@
  *   });
  */
 
+import { searchContextBlock } from '../../../src/signals/search-context.js';
 import { chromium, BrowserContext, Page } from 'playwright';
 import fs from 'fs';
 import path from 'path';
@@ -532,7 +533,11 @@ Return only the completed market-intelligence cover image. Do not provide the re
 }
 
 function buildImagePrompt(name: string, reportUrl: string, promptChoice: string): string {
-  return promptChoice === '2' ? imagePrompt2(name, reportUrl) : imagePrompt1(name, reportUrl);
+  const base = promptChoice === '2' ? imagePrompt2(name, reportUrl) : imagePrompt1(name, reportUrl);
+  const searchContext = searchContextBlock(name, 'image');
+  return searchContext ? `${base}
+
+${searchContext}` : base;
 }
 
 // ── Multi-selector image finder (waits 1 min, checks, repeats up to 15x) ──
@@ -652,6 +657,7 @@ async function runCoverImageGeneration(params: {
       '--disable-blink-features=AutomationControlled',
       '--no-first-run',
       '--no-default-browser-check',
+      ...(process.env.BLOG_SHOW_BROWSER === '1' ? [] : ['--start-minimized']),
     ],
   });
 

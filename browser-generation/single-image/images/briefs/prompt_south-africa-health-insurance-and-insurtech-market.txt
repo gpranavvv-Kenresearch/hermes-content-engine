@@ -1,8 +1,8 @@
 Create a premium square market-intelligence infographic for Ken Research using only the inputs below. Do not rely on any reference images.
 
 Inputs:
-Report title: [South Africa Health Insurance And Insurtech Market]
-Market name: South Africa Health Insurance And Insurtech Market
+Report title: [South Africa Health Insurance and InsurTech Market]
+Market name: South Africa Health Insurance and InsurTech Market
 
 Task:
 Research the report URL and credible public internet sources to understand the market. Find or infer the most relevant business data available online, such as:
